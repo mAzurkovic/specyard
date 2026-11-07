@@ -34,7 +34,7 @@ Terms:
 - FR14. Graph view: system MUST show one lane per milestone, one node per feature, and one edge per dependency from `milestones.md` and `tasks.md`.
 - FR15. List view: system MUST show the tree milestone, feature, task. Each task MUST show a state icon (done, running, failed 3 attempts, needs you, to do, waits on a task, fix task) and its attempt count from `progress.md`. Each feature MUST show its dependencies.
 - FR16. Each feature MUST show one stage, derived from files, runs and PRs only: needs design, needs tasks, tasks in review, waits on dependencies, ready, running, needs you, paused, stopped, PR open, done (PR merged).
-- FR17. Graph view MUST mark the critical path (the longest chain of features that are not done) and list the features that can start now, with the action for each.
+- FR17. Graph view MUST mark the critical path (the longest chain of features that are not done) and list the features that can start now, with the action for each. A planning step (`/to-design`, `/to-tasks`, review tasks) can start whatever the state of the dependencies. `/implement-feature` can start only when the feature is ready (FR30).
 - FR18. Spec file changed outside Specyard: the UI MUST show the change with no page reload.
 - FR19. The UI MUST show feature ids as `M<n>·F<k>` and fix tasks as `Fix X<n>`.
 - FR20. Spec file that does not parse: the UI MUST show an error badge on it with the line and what was expected, and the rest of the project MUST keep working. A feature with a `tasks.md` that does not parse MUST NOT be implementable.

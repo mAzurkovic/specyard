@@ -112,3 +112,15 @@ describe("buildModel tasks and issues", () => {
     expect(model.criticalPath.length).toBeGreaterThan(0);
   });
 });
+
+describe("buildModel activity", () => {
+  it("sets each feature's last activity to its newest file time", () => {
+    const text = milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Needs: none. Status: not started.\n  - F2. B: x. Docs: tasks. Needs: none. Status: not started.\n");
+    const model = buildModel(
+      "p",
+      files({ "m1-c/f1-a/tasks.md": draft, "m1-c/f1-a/progress.md": "" }, text),
+      new Map([["m1-c/f1-a/tasks.md", 1000], ["m1-c/f1-a/progress.md", 3000], ["milestones.md", 9000]]),
+    );
+    expect(model.features.map((f) => f.updatedAt)).toEqual([3000, undefined]);
+  });
+});

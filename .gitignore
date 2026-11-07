@@ -8,3 +8,4 @@ specs/**/progress.md
 specs/**/verify/
 specs/**/.specyard/
 .DS_Store
+.claude/worktrees/
