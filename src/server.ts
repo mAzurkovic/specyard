@@ -3,7 +3,10 @@ import { readFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize, sep } from "node:path";
 import { authorize } from "./auth.js";
+import { buildModel, type ProjectModel } from "./model.js";
 import type { Project } from "./projects.js";
+import { readProject } from "./readProject.js";
+import { watchProject } from "./watch.js";
 
 export type RunningServer = { url: string; address: string; token: string; close: () => Promise<void> };
 
@@ -25,11 +28,39 @@ const TYPES: Record<string, string> = {
 
 export async function startServer(options: Options): Promise<RunningServer> {
   const token = randomBytes(16).toString("hex");
-  let current = options.current;
+  let current: Project | null = null;
+  let model: ProjectModel | null = null;
+  let stopWatching = () => {};
   const listeners = new Set<ServerResponse>();
   const view = (p: Project) => ({ name: p.name, path: p.dir });
-  const projectBody = () => JSON.stringify({ projects: options.projects.map(view), current: current && view(current) });
+  const projectBody = () => JSON.stringify({ projects: options.projects.map(view), current: current && view(current), model });
   const broadcast = () => listeners.forEach((res) => res.write(`event: project\ndata: ${projectBody()}\n\n`));
+
+  const rebuild = async (project: Project) => {
+    try {
+      const next = buildModel(project.name, await readProject(project.dir));
+      if (current === project) model = next;
+    } catch (error) {
+      // Keep showing the last good model; the next change tries again.
+      console.error(`specyard: cannot read ${project.dir}: ${(error as Error).message}`);
+    }
+  };
+  const select = async (project: Project) => {
+    stopWatching();
+    stopWatching = () => {};
+    current = project;
+    model = null;
+    // Watch before the first read, so a quick second switch always closes this watcher.
+    try {
+      stopWatching = watchProject(project.dir, () => {
+        if (current === project) void rebuild(project).then(broadcast);
+      });
+    } catch (error) {
+      console.error(`specyard: cannot watch ${project.dir}: ${(error as Error).message}`);
+    }
+    await rebuild(project);
+  };
+  if (options.current) await select(options.current);
 
   let origin = "";
   const server = createServer((req, res) => {
@@ -49,9 +80,10 @@ export async function startServer(options: Options): Promise<RunningServer> {
         const name = (body as { name?: unknown } | undefined)?.name;
         const picked = options.projects.find((p) => p.name === name);
         if (!picked) return send(res, 400);
-        current = picked;
-        send(res, 204);
-        broadcast();
+        return select(picked).then(() => {
+          send(res, 204);
+          broadcast();
+        });
       });
     }
     if (url.pathname === "/api/events" && req.method === "GET") {
@@ -76,6 +108,7 @@ export async function startServer(options: Options): Promise<RunningServer> {
     token,
     close: () =>
       new Promise((resolve) => {
+        stopWatching();
         listeners.forEach((res) => res.end());
         server.close(() => resolve());
       }),

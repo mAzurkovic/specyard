@@ -1,0 +1,114 @@
+import { describe, expect, it } from "vitest";
+import { buildModel, type ProjectFiles } from "../src/model.js";
+
+const milestones = (body: string) => `# P — Milestones\n\n${body}`;
+const approved = "# T\n\nStatus: approved a41f09c2e7b1\n\n## 1. A [serial]\n- [x] 1.1 One.\n- [ ] 1.2 Two.\n";
+const draft = "# T\n\nStatus: draft\n\n## 1. A [serial]\n- [ ] 1.1 One.\n";
+
+function files(extra: Record<string, string>, milestonesText: string): ProjectFiles {
+  return new Map(Object.entries({ "requirements.md": "# R\n", "design.md": "# D\n", "milestones.md": milestonesText, ...extra }));
+}
+
+const twoMilestones = milestones(`## M1. Core
+- Needs: none.
+- Features:
+  - F1. Base: x. Docs: tasks. Needs: none. Status: done.
+  - F2. Writes: x. Docs: design, tasks. Needs: F1. Status: not started.
+  - F3. Reads: x. Docs: tasks. Needs: F1. Status: not started.
+
+## M2. API
+- Needs: M1.
+- Features:
+  - F1. Accounts: x. Docs: tasks. Needs: none. Status: not started.
+  - F2. Transfers: x. Docs: tasks. Needs: F1, M1 F2. Status: not started.
+`);
+
+describe("buildModel stages", () => {
+  it.each([
+    ["done in milestones.md", "M1·F1", {}, "done"],
+    ["design listed and missing", "M1·F2", {}, "needs-design"],
+    ["no tasks.md", "M1·F3", {}, "needs-tasks"],
+    ["draft tasks", "M1·F3", { "m1-core/f3-reads/tasks.md": draft }, "tasks-in-review"],
+    ["tasks with no Status line", "M1·F3", { "m1-core/f3-reads/tasks.md": "## 1. A [serial]\n- [ ] 1.1 x\n" }, "tasks-in-review"],
+    ["approved, dependencies done", "M1·F3", { "m1-core/f3-reads/tasks.md": approved }, "ready"],
+    ["approved, a dependency not done", "M2·F2", { "m2-api/f2-transfers/tasks.md": approved }, "waits-on-deps"],
+    ["approved, needed milestone not done", "M2·F1", { "m2-api/f1-accounts/tasks.md": approved }, "waits-on-deps"],
+  ])("%s gives the right stage", (_label, id, extra, stage) => {
+    const model = buildModel("p", files(extra, twoMilestones));
+    expect(model.features.find((f) => f.id === id)?.stage).toBe(stage);
+  });
+});
+
+describe("buildModel graph", () => {
+  const model = buildModel("p", files({}, twoMilestones));
+
+  it("has one edge per dependency, from the dependency to the feature", () => {
+    expect(model.edges).toEqual([
+      { from: "M1·F1", to: "M1·F2" },
+      { from: "M1·F1", to: "M1·F3" },
+      { from: "M2·F1", to: "M2·F2" },
+      { from: "M1·F2", to: "M2·F2" },
+    ]);
+  });
+
+  it("marks the longest chain of features that are not done as the critical path", () => {
+    expect(model.criticalPath).toEqual(["M1·F2", "M2·F2"]);
+  });
+
+  it("lists the features that can start now with their next action", () => {
+    expect(model.canStartNow).toEqual([
+      { id: "M1·F2", action: "/to-design M1 F2" },
+      { id: "M1·F3", action: "/to-tasks M1 F3" },
+      { id: "M2·F1", action: "/to-tasks M2 F1" },
+      { id: "M2·F2", action: "/to-tasks M2 F2" },
+    ]);
+  });
+
+  it("shows which required files exist", () => {
+    expect(buildModel("p", new Map([["design.md", "# D"]])).files).toEqual({ requirements: false, design: true, milestones: false });
+  });
+});
+
+describe("buildModel tasks and issues", () => {
+  it("attaches tasks with attempts from progress.md, fix tasks included", () => {
+    const model = buildModel("p", files({
+      "m1-core/f3-reads/tasks.md": approved,
+      "m1-core/f3-reads/progress.md": "| Task | Status | Attempts | Last failure |\n|---|---|---|---|\n| 1.1 | done | 2 | |\n| F1 | done | 1 | verify #2 |\n",
+    }, twoMilestones));
+    const feature = model.features.find((f) => f.id === "M1·F3");
+    expect(feature?.parents[0]?.tasks.map((t) => [t.id, t.done, t.attempts])).toEqual([["1.1", true, 2], ["1.2", false, 0]]);
+    expect(feature?.fixTasks).toEqual([{ id: "X1", status: "done", attempts: 1, lastFailure: "verify #2" }]);
+  });
+
+  it("keeps building when a tasks.md does not parse, and marks that feature not implementable", () => {
+    const model = buildModel("p", files({ "m1-core/f3-reads/tasks.md": "## 1. A [whenever]\n" }, twoMilestones));
+    expect(model.issues).toContainEqual({ file: "m1-core/f3-reads/tasks.md", line: 1, kind: "error", message: "expected a tag like `[serial]` or `[parallel, needs 1, 2.3]`" });
+    expect(model.features.find((f) => f.id === "M1·F3")?.implementable).toBe(false);
+    expect(model.features.find((f) => f.id === "M1·F2")?.implementable).toBe(true);
+  });
+
+  it("keeps the milestones and features that parse when one feature line in milestones.md is broken", () => {
+    const text = milestones("## M1. A\n- Features:\n  - F1. Good: x. Docs: tasks. Needs: none. Status: not started.\n\n## M2. B\n- Features:\n  - F2. Broken line with no parts\n");
+    const model = buildModel("p", files({}, text));
+    expect(model.features.map((f) => f.id)).toEqual(["M1·F1"]);
+    expect(model.milestones.map((m) => m.id)).toEqual(["M1", "M2"]);
+    expect(model.issues).toContainEqual(expect.objectContaining({ file: "milestones.md", line: 9, kind: "error" }));
+  });
+
+  it("carries parser warnings as issues", () => {
+    const model = buildModel("p", files({}, milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Status: done.\n")));
+    expect(model.issues).toEqual([{ file: "milestones.md", line: 5, kind: "warning", message: "M1 F1 has no dependency list; treated as none" }]);
+  });
+
+  it("warns on a dependency that names no feature, and draws no edge for it", () => {
+    const model = buildModel("p", files({}, milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Needs: F9. Status: not started.\n")));
+    expect(model.edges).toEqual([]);
+    expect(model.issues).toContainEqual({ file: "milestones.md", line: 5, kind: "warning", message: "M1·F1 needs M1·F9, which does not exist" });
+  });
+
+  it("warns on a dependency cycle and still finds a path", () => {
+    const model = buildModel("p", files({}, milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Needs: F2. Status: not started.\n  - F2. B: x. Docs: tasks. Needs: F1. Status: not started.\n")));
+    expect(model.issues.some((i) => i.message.includes("cycle"))).toBe(true);
+    expect(model.criticalPath.length).toBeGreaterThan(0);
+  });
+});
