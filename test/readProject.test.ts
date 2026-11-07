@@ -1,6 +1,7 @@
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
+import { hashText } from "../src/hashes.js";
 import { readContextFiles, readMtimes, readProject } from "../src/readProject.js";
 import { tempDir } from "./helpers.js";
 
@@ -66,6 +67,7 @@ it("lists every file under context/ and mocks/ with its size and change time, no
     ["mocks/01-start.html", 8],
   ]);
   expect(files.find((f) => f.path === "context/hld.md")?.mtime).toBe(changed.getTime());
+  expect(files.find((f) => f.path === "context/hld.md")?.hash).toBe(hashText("# HLD\n"));
 });
 
 it("lists no context files when context/ and mocks/ do not exist", async () => {

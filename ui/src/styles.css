@@ -188,3 +188,12 @@ body { background: var(--bg); }
 .md h3 { font-size: 13px; margin: 12px 0 4px; }
 .md pre { background: var(--soft); padding: 8px 10px; border-radius: 6px; overflow: auto; }
 .md li:has(> input[type="checkbox"]) { list-style: none; margin-left: -18px; }
+
+/* Stale specs */
+.stale-banner { background: var(--stale-soft); border-color: #e8a60066; }
+.side .stale-mark { color: var(--stale); }
+.top a.chip { text-decoration: none; }
+.node .meta { overflow: hidden; white-space: nowrap; }
+/* Task count in the top-right corner, so the badge line never has to make room for it. */
+.node > .count { position: absolute; top: 8px; right: 9px; font-size: 11px; color: var(--muted); }
+.node > .count ~ b { padding-right: 40px; }

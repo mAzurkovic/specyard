@@ -74,7 +74,7 @@ HTTP API on 127.0.0.1. Every `/api/*` request needs `?t=<token>` or the `X-Specy
 - `POST /api/runs` `{ kind, target, comment?, bypassPermissions? }` → `{ runId }`. 409 when Implement gates fail (FR27), with reasons.
 - `POST /api/runs/:id/stop` → 202. `POST /api/runs/:id/resume` → `{ runId }`.
 - `POST /api/inbox/:waitId` `{ answers?: Record<question, string>, decision?: 'approve'|'skip', reply?: string }` → 204. 409 when a batch is not fully answered (FR42).
-- `POST /api/features/:id/approve` → writes the Status line. `POST /api/stale/:file/not-affected` → writes the sources line.
+- `POST /api/features/:id/approve` → writes the Status line. `POST /api/stale/not-affected` `{ file }` → writes the sources line.
 - `POST /api/context` (multipart) → copies into `context/`.
 - `POST /api/prs/:n/merge` → `gh pr merge`.
 
