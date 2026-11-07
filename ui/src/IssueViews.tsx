@@ -37,3 +37,12 @@ export function IssuesPanel({ issues }: { issues: Issue[] }) {
     </div>
   );
 }
+
+export function StaleBadge({ stale }: { stale: boolean }) {
+  if (!stale) return null;
+  return (
+    <span class="badge stale" data-stale title="Made from a spec that changed since">
+      stale
+    </span>
+  );
+}

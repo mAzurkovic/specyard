@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { Feature, ProjectModel } from "../../../src/model.js";
 import { fetchFile } from "../api.js";
 import { Markdown } from "../markdown.js";
-import { featureHref, milestoneHref } from "../route.js";
+import { featureHref, milestoneHref, staleHref } from "../route.js";
 import { StageBadge } from "../stage.js";
 import { featureSteps, Steps } from "./Steps.js";
 
@@ -38,6 +38,14 @@ export function FeaturePage({ model, id, tab }: { model: ProjectModel; id: strin
         <StageBadge stage={feature.stage} />
       </div>
       <Steps steps={featureSteps(feature)} />
+      {model.stale
+        .filter((st) => feature.dir !== undefined && st.file.startsWith(`${feature.dir}/`))
+        .map((st) => (
+          <div class="panel stale-banner" key={st.file}>
+            <span class="badge stale">stale</span> <code>{st.file}</code> was made from a source that changed since.{" "}
+            <a href={staleHref(st.file)}>Review the change</a>
+          </div>
+        ))}
       <div class="tabs" role="tablist">
         {(Object.keys(TABS) as Tab[]).map((t) => (
           <a key={t} role="tab" aria-selected={t === current} class={t === current ? "on" : undefined} href={featureHref(feature.id, t)}>

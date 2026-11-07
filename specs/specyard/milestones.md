@@ -22,8 +22,8 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
   - F1. Start and serve: CLI, start checks, project picker and `--path`, server on 127.0.0.1 with token and Origin check, SSE, UI header shell. Docs: tasks. Needs: none. Status: done.
   - F2. Spec tree model: parsers with parse errors, model build (stages, dependencies, critical path, can-start-now), watcher pushes the model over SSE. Docs: tasks. Needs: F1. Status: done.
   - F3. Graph and list views: milestone lanes and SVG edges, task tree with state icons, header counts, Blueprint light style. Docs: tasks. Needs: F2. Status: done.
-  - F4. Feature pages and context: spec tabs, required and missing file states, context list, Add context file. Docs: tasks. Needs: F2. Status: in progress.
-  - F5. Stale detection: hashes, stale flags passed down, stale page with git-history diff, Mark as not affected. Docs: tasks. Needs: F2, F3. Status: not started.
+  - F4. Feature pages and context: spec tabs, required and missing file states, context list, Add context file. Docs: tasks. Needs: F2. Status: done.
+  - F5. Stale detection: hashes, stale flags passed down, stale page with git-history diff, Mark as not affected. Docs: tasks. Needs: F2, F3. Status: in progress.
 
 ## M2. Planning runs and inbox
 - Delivers: plan a project from the UI. Run `/to-brd`, `/to-design`, `/to-milestones`, `/to-tasks` and `/expert-review`, answer question batches and approvals in the inbox, review diffs, approve tasks, act on stale files. Ships the changed skills and `specyard skills install`.

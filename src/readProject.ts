@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { hashBytes } from "./hashes.js";
 import type { ContextFile, ProjectFiles } from "./model.js";
 
 const PROJECT_FILES = ["requirements.md", "design.md", "milestones.md"];
@@ -49,8 +50,8 @@ export async function readContextFiles(projectDir: string): Promise<ContextFile[
   await Promise.all(
     found.flat().map(async (file) => {
       // A file removed since the listing is simply not there any more.
-      const info = await stat(file).catch(missingAsUndefined);
-      if (info) files.push({ path: relative(projectDir, file), size: info.size, mtime: Math.round(info.mtimeMs) });
+      const [info, bytes] = await Promise.all([stat(file).catch(missingAsUndefined), readFile(file).catch(missingAsUndefined)]);
+      if (info && bytes) files.push({ path: relative(projectDir, file), size: info.size, mtime: Math.round(info.mtimeMs), hash: hashBytes(bytes) });
     }),
   );
   return files.sort((a, b) => a.path.localeCompare(b.path));

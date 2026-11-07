@@ -3,9 +3,11 @@ import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { basename, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { authorize } from "./auth.js";
+import { readInside } from "./inside.js";
 import { buildModel, type ProjectModel } from "./model.js";
 import type { Project } from "./projects.js";
 import { readContextFiles, readMtimes, readProject } from "./readProject.js";
+import { markNotAffected, staleDetails } from "./staleApi.js";
 import { watchProject } from "./watch.js";
 
 export type RunningServer = { url: string; address: string; token: string; close: () => Promise<void> };
@@ -111,6 +113,29 @@ export async function startServer(options: Options): Promise<RunningServer> {
         res.end(file);
       });
     }
+    if (url.pathname === "/api/stale" && req.method === "GET") {
+      if (!current || !model) return void send(res, 404);
+      return void staleDetails(current.dir, model, url.searchParams.get("file") ?? "").then((details) =>
+        details ? send(res, 200, JSON.stringify(details)) : send(res, 404),
+      );
+    }
+    if (url.pathname === "/api/stale/not-affected") {
+      if (req.method !== "POST") return void send(res, 405);
+      if (!current || !model) return void send(res, 404);
+      const [project, snapshot] = [current, model];
+      return void readJson(req).then(async (body) => {
+        const file = (body as { file?: unknown } | undefined)?.file;
+        if (typeof file !== "string") return send(res, 400);
+        if (!(await markNotAffected(project.dir, snapshot, file))) return send(res, 404);
+        // Rebuild now so the next read already shows the flag gone; the watcher would only follow later.
+        await rebuild(project);
+        send(res, 204);
+        broadcast();
+      }).catch((error: Error) => {
+        console.error(`specyard: cannot mark ${project.dir} as not affected: ${error.message}`);
+        send(res, 500);
+      });
+    }
     if (url.pathname === "/api/context") {
       if (req.method !== "POST") return void send(res, 405);
       if (!current) return void send(res, 404);
@@ -214,26 +239,6 @@ async function addContextFile(projectDir: string, req: IncomingMessage): Promise
     throw error;
   }
   return `context/${name}`;
-}
-
-/** True for `root` itself and anything below it. */
-const isInside = (root: string, path: string) => {
-  const rel = relative(root, path);
-  return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
-};
-
-/** The text of a file under `root`, or 403 when the path or its symlink target leaves `root`, or 404 when it cannot be read. */
-async function readInside(root: string, path: string): Promise<string | 403 | 404> {
-  const target = resolve(root, path);
-  if (!isInside(root, target)) return 403;
-  try {
-    const [realRoot, real] = await Promise.all([realpath(root), realpath(target)]);
-    if (!isInside(realRoot, real)) return 403;
-    return await readFile(real, "utf8");
-  } catch {
-    // Missing, a folder, or not readable: all mean there is no file to show.
-    return 404;
-  }
 }
 
 async function serveStatic(root: string, rawPath: string, res: ServerResponse): Promise<void> {

@@ -3,15 +3,21 @@ import type { Feature, ProjectModel } from "../../../src/model.js";
 import { layoutGraph } from "../graph/layout.js";
 import { Inline } from "../Inline.js";
 import { issuesByFeature } from "../issues.js";
-import { ErrorBadge } from "../IssueViews.js";
+import { ErrorBadge, StaleBadge } from "../IssueViews.js";
 import { STAGE, StageBadge } from "../stage.js";
 
 const NODE_TONE: Partial<Record<string, string>> = { ok: "ok", run: "run", ask: "ask", bad: "ask" };
 
-const taskCount = (f: Feature) => {
-  const tasks = f.parents.flatMap((p) => p.tasks);
-  return tasks.length === 0 ? "" : `${tasks.filter((t) => t.done).length}/${tasks.length} tasks`;
-};
+function TaskCount({ feature }: { feature: Feature }) {
+  const tasks = feature.parents.flatMap((p) => p.tasks);
+  if (tasks.length === 0) return null;
+  const done = tasks.filter((t) => t.done).length;
+  return (
+    <span class="count" title={`${done} of ${tasks.length} tasks done`}>
+      {done}/{tasks.length}
+    </span>
+  );
+}
 
 export function GraphView({ model }: { model: ProjectModel }) {
   const [selected, setSelected] = useState<string | undefined>(undefined);
@@ -60,7 +66,7 @@ export function GraphView({ model }: { model: ProjectModel }) {
                 role="button"
                 tabIndex={0}
                 data-feature={n.id}
-                class={`node ${tone}${critical.has(n.id) ? " crit" : ""}${selected === n.id ? " sel" : ""}`}
+                class={`node ${f.stale ? "stale" : tone}${critical.has(n.id) ? " crit" : ""}${selected === n.id ? " sel" : ""}`}
                 style={{ left: `${n.x}px`, top: `${n.y}px` }}
                 onClick={() => setSelected(n.id)}
                 onDblClick={() => (location.hash = `#/f/${encodeURIComponent(n.id)}`)}
@@ -72,13 +78,14 @@ export function GraphView({ model }: { model: ProjectModel }) {
                   }
                 }}
               >
+                <TaskCount feature={f} />
                 <b>
                   {f.feature} <Inline text={f.name} />
                 </b>
                 <div class="meta">
                   <StageBadge stage={f.stage} />
+                  <StaleBadge stale={f.stale} />
                   <ErrorBadge issues={issues.get(f.id)} />
-                  {taskCount(f)}
                 </div>
               </div>
             );
