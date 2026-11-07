@@ -44,7 +44,10 @@ export type Feature = {
   updatedAt: number | undefined;
 };
 
-export type Milestone = { id: string; name: string; needs: string[]; features: string[] };
+/** A file under `context/` or `mocks/`, path relative to the project folder, mtime in ms. */
+export type ContextFile = { path: string; size: number; mtime: number };
+
+export type Milestone = { id: string; name: string; delivers: string; exitCriteria: string[]; needs: string[]; features: string[] };
 
 export type ProjectModel = {
   name: string;
@@ -55,13 +58,19 @@ export type ProjectModel = {
   criticalPath: string[];
   canStartNow: { id: string; action: string }[];
   issues: Issue[];
+  contextFiles: ContextFile[];
 };
 
 const FEATURE_FILE = /^m(\d+)-[^/]+\/f(\d+)-[^/]+\/(requirements|design|tasks|progress)\.md$/;
 
 export const featureId = (milestone: string, feature: string) => `${milestone}·${feature}`;
 
-export function buildModel(name: string, files: ProjectFiles, mtimes: Map<string, number> = new Map()): ProjectModel {
+export function buildModel(
+  name: string,
+  files: ProjectFiles,
+  mtimes: Map<string, number> = new Map(),
+  contextFiles: ContextFile[] = [],
+): ProjectModel {
   const issues: Issue[] = [];
   const read = <T>(file: string, parsed: Parsed<T>): T | undefined => {
     if (!parsed.ok) {
@@ -106,7 +115,7 @@ export function buildModel(name: string, files: ProjectFiles, mtimes: Map<string
   return {
     name,
     files: { requirements: files.has("requirements.md"), design: files.has("design.md"), milestones: milestonesText !== undefined },
-    milestones: entries.map((m) => ({ id: m.id, name: m.name, needs: m.needs, features: m.features.map((f) => featureId(m.id, f.id)) })),
+    milestones: entries.map((m) => ({ id: m.id, name: m.name, delivers: m.delivers, exitCriteria: m.exitCriteria, needs: m.needs, features: m.features.map((f) => featureId(m.id, f.id)) })),
     features,
     edges,
     criticalPath: criticalPath(features, edges, issues),
@@ -115,6 +124,7 @@ export function buildModel(name: string, files: ProjectFiles, mtimes: Map<string
       return action ? [{ id: f.id, action }] : [];
     }),
     issues,
+    contextFiles,
   };
 }
 

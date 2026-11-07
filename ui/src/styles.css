@@ -173,3 +173,18 @@ tr.group td { background: var(--soft); font-weight: 600; }
 .top .chip.run { background: #2a6fd1; color: #fff; }
 .app { max-width: none; margin: 0; border-radius: 0; box-shadow: none; min-height: 100vh; }
 body { background: var(--bg); }
+
+/* Feature, milestone and project pages */
+.side .add { display: flex; width: 100%; padding: 4px 14px; border: 0; background: none; font: inherit; color: var(--muted); text-align: left; cursor: pointer; }
+.side .add:hover, .side .add:focus-visible { color: var(--accent); }
+.side h4 { display: flex; align-items: baseline; gap: 6px; }
+.side h4 .count { margin-left: auto; padding-right: 14px; font-weight: 400; }
+.side h4 a { display: inline; padding: 0; color: inherit; }
+.side .error { display: block; padding: 2px 14px; }
+.error { color: var(--bad); font-size: 12px; }
+.cmd { padding: 3px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--soft); }
+.md h1 { font-size: 16px; margin: 0 0 8px; }
+.md h2 { font-size: 14px; margin: 14px 0 6px; }
+.md h3 { font-size: 13px; margin: 12px 0 4px; }
+.md pre { background: var(--soft); padding: 8px 10px; border-radius: 6px; overflow: auto; }
+.md li:has(> input[type="checkbox"]) { list-style: none; margin-left: -18px; }

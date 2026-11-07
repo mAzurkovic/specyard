@@ -1,27 +1,20 @@
-import { useEffect, useState } from "preact/hooks";
 import type { ProjectModel, Stage } from "../../src/model.js";
 import { selectProject, useProjectState, type ProjectRef } from "./api.js";
 import { IconSymbols } from "./icons.js";
+import { Inline } from "./Inline.js";
 import { IssuesPanel } from "./IssueViews.js";
+import { featureHref, milestoneHref, useRoute, type Route } from "./route.js";
+import { FeaturePage } from "./views/FeaturePage.js";
 import { GraphView } from "./views/GraphView.js";
 import { ListView } from "./views/ListView.js";
+import { MilestonePage } from "./views/MilestonePage.js";
+import { AddContextFile, ProjectPage } from "./views/ProjectPage.js";
 
 type View = "graph" | "list";
 
-function useView(): View {
-  const read = (): View => (location.hash === "#/list" ? "list" : "graph");
-  const [view, setView] = useState(read);
-  useEffect(() => {
-    const onHash = () => setView(read());
-    addEventListener("hashchange", onHash);
-    return () => removeEventListener("hashchange", onHash);
-  }, []);
-  return view;
-}
-
 export function App() {
   const state = useProjectState();
-  const view = useView();
+  const route = useRoute();
   const current = state?.current ?? null;
   const model = state?.model ?? null;
   return (
@@ -39,8 +32,8 @@ export function App() {
         <span class="spacer" />
         {model && <HeaderCounts model={model} />}
       </header>
-      <nav class="side">{model && <Sidebar model={model} view={view} />}</nav>
-      <main>{state && <Body projects={state.projects} current={current} model={model} view={view} />}</main>
+      {model ? <Sidebar model={model} route={route} /> : <nav class="side" />}
+      <main>{state && <Body projects={state.projects} current={current} model={model} route={route} />}</main>
     </div>
   );
 }
@@ -70,63 +63,17 @@ function summary(model: ProjectModel, view: View): string {
   return parts.join(" · ");
 }
 
-function Sidebar({ model, view }: { model: ProjectModel; view: View }) {
-  const done = (ids: string[]) => ids.filter((id) => model.features.find((f) => f.id === id)?.stage === "done").length;
-  return (
-    <>
-      <h4>Project</h4>
-      {(["requirements", "design", "milestones"] as const).map((file) => (
-        <div class={`item${model.files[file] ? "" : " muted"}`} key={file}>
-          <span class={`dot${model.files[file] ? " ok" : ""}`} />
-          {file}.md
-          {!model.files[file] && <span class="count">missing</span>}
-        </div>
-      ))}
-      <h4>Views</h4>
-      <a class={view === "graph" ? "on" : ""} href="#/graph">
-        Graph
-      </a>
-      <a class={view === "list" ? "on" : ""} href="#/list">
-        List
-      </a>
-      {model.milestones.length > 0 && <h4>Milestones</h4>}
-      {model.milestones.map((m) => (
-        <a key={m.id} href="#/list">
-          {m.id} {m.name}
-          <span class="count">
-            {done(m.features)}/{m.features.length}
-          </span>
-        </a>
-      ))}
-    </>
-  );
-}
-
-function Body({ projects, current, model, view }: { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null; view: View }) {
+function Body({ projects, current, model, route }: { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null; route: Route }) {
   if (current) {
-    return (
-      <>
-        <div class="row" style={{ marginBottom: "10px" }}>
+    if (!model) {
+      return (
+        <>
           <h2>{current.name}</h2>
-          {model && (
-            <span class="muted" data-summary>
-              {summary(model, view)}
-            </span>
-          )}
-          <span class="spacer" />
-          <div class="seg">
-            <a class={view === "graph" ? "on" : ""} href="#/graph">
-              Graph
-            </a>
-            <a class={view === "list" ? "on" : ""} href="#/list">
-              List
-            </a>
-          </div>
-        </div>
-        {model && (view === "graph" ? <GraphView model={model} /> : <ListView model={model} />)}
-        {model && <IssuesPanel issues={model.issues} />}
-      </>
-    );
+          <p class="muted">The project files cannot be read.</p>
+        </>
+      );
+    }
+    return <Page model={model} path={current.path} route={route} />;
   }
   if (projects.length === 0) {
     return (
@@ -150,5 +97,109 @@ function Body({ projects, current, model, view }: { projects: ProjectRef[]; curr
         </div>
       ))}
     </div>
+  );
+}
+
+function Page({ model, path, route }: { model: ProjectModel; path: string; route: Route }) {
+  switch (route.page) {
+    case "feature":
+      return <FeaturePage model={model} id={route.id} tab={route.tab} />;
+    case "milestone":
+      return <MilestonePage model={model} id={route.id} />;
+    case "project":
+      return <ProjectPage model={model} path={path} />;
+    case "graph":
+    case "list":
+      return <Overview model={model} view={route.page} />;
+    case "home":
+      // Until the required files and the milestones exist, the next planning step is the useful start.
+      return model.files.requirements && model.files.design && model.files.milestones ? <Overview model={model} view="graph" /> : <ProjectPage model={model} path={path} />;
+  }
+}
+
+function Overview({ model, view }: { model: ProjectModel; view: View }) {
+  return (
+    <>
+      <div class="row" style={{ marginBottom: "10px" }}>
+        <h2>{model.name}</h2>
+        <span class="muted" data-summary>
+          {summary(model, view)}
+        </span>
+        <span class="spacer" />
+        <div class="seg">
+          <a class={view === "graph" ? "on" : ""} href="#/graph">
+            Graph
+          </a>
+          <a class={view === "list" ? "on" : ""} href="#/list">
+            List
+          </a>
+        </div>
+      </div>
+      {view === "graph" ? <GraphView model={model} /> : <ListView model={model} />}
+      <IssuesPanel issues={model.issues} />
+    </>
+  );
+}
+
+function Sidebar({ model, route }: { model: ProjectModel; route: Route }) {
+  const context = model.contextFiles.filter((f) => f.path.startsWith("context/"));
+  const mocks = model.contextFiles.length - context.length;
+  const projectFiles = [
+    ["requirements.md", model.files.requirements],
+    ["design.md", model.files.design],
+    ["milestones.md", model.files.milestones],
+  ] as const;
+  const onView = (view: View) => route.page === view || (view === "graph" && route.page === "home" && model.files.milestones);
+  return (
+    <nav class="side">
+      <h4>Project</h4>
+      {projectFiles.map(([name, found]) => (
+        <a key={name} href="#/project" class={found ? undefined : "muted"}>
+          <span class={found ? "dot ok" : "dot"} />
+          {name}
+          {!found && <span class="count">missing</span>}
+        </a>
+      ))}
+      <h4>Context</h4>
+      {context.map((f) => (
+        <div class="item" key={f.path}>
+          <span class="dot ok" />
+          {f.path}
+        </div>
+      ))}
+      {mocks > 0 && (
+        <div class="item">
+          <span class="dot ok" />
+          mocks/<span class="count">{mocks}</span>
+        </div>
+      )}
+      <AddContextFile class="add muted" />
+      <h4>Views</h4>
+      <a class={onView("graph") ? "on" : ""} href="#/graph">
+        Graph
+      </a>
+      <a class={onView("list") ? "on" : ""} href="#/list">
+        List
+      </a>
+      {model.milestones.map((m) => {
+        const features = model.features.filter((f) => f.milestone === m.id);
+        return (
+          <div key={m.id}>
+            <h4>
+              <a href={milestoneHref(m.id)}>{`${m.id} ${m.name}`}</a>
+              <span class="count">
+                {features.filter((f) => f.stage === "done").length}/{features.length}
+              </span>
+            </h4>
+            {features.map((f) => (
+              <a key={f.id} href={featureHref(f.id)} class={route.page === "feature" && route.id === f.id ? "sub on" : "sub"}>
+                <span class={f.stage === "done" ? "dot ok" : "dot"} />
+                {f.feature} <Inline text={f.name} />
+              </a>
+            ))}
+          </div>
+        );
+      })}
+    </nav>
   );
 }

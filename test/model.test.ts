@@ -67,6 +67,19 @@ describe("buildModel graph", () => {
   it("shows which required files exist", () => {
     expect(buildModel("p", new Map([["design.md", "# D"]])).files).toEqual({ requirements: false, design: true, milestones: false });
   });
+
+  it("carries each milestone's delivers line and exit criteria", () => {
+    const text = milestones("## M1. Core\n- Delivers: a ledger.\n- Exit criteria:\n  - Posts balance.\n- Features:\n  - F1. A: x. Docs: tasks. Needs: none. Status: done.\n");
+    expect(buildModel("p", files({}, text)).milestones).toEqual([
+      { id: "M1", name: "Core", delivers: "a ledger.", exitCriteria: ["Posts balance."], needs: [], features: ["M1·F1"] },
+    ]);
+  });
+
+  it("carries the context files, and none when not given", () => {
+    const context = [{ path: "context/hld.md", size: 120, mtime: 1_700_000_000_000 }];
+    expect(buildModel("p", new Map(), new Map(), context).contextFiles).toEqual(context);
+    expect(buildModel("p", new Map()).contextFiles).toEqual([]);
+  });
 });
 
 describe("buildModel tasks and issues", () => {

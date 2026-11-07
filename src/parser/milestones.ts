@@ -12,13 +12,22 @@ export type FeatureEntry = {
   line: number;
 };
 
-export type MilestoneEntry = { id: string; name: string; needs: string[]; features: FeatureEntry[]; line: number };
+export type MilestoneEntry = {
+  id: string;
+  name: string;
+  delivers: string;
+  exitCriteria: string[];
+  needs: string[];
+  features: FeatureEntry[];
+  line: number;
+};
 
 const HEADING = /^## (M\d+)\. (.+)$/;
 const LOOKS_LIKE_MILESTONE = /^## M\d/;
 const FEATURE_START = /^\s*- F\d/;
 const FEATURE = /^\s*- (F\d+)\. ([^:]+): (.*?)\.?\s*Docs: ([^.]+)\.(?:\s*Needs: ([^.]+)\.)?(?:\s*Status: ([^.]+)\.)?\s*$/;
 const NEED = /^(?:(M\d+) )?(F\d+)$/;
+const NESTED_ITEM = /^\s+- (.+)$/;
 
 const FEATURE_EXPECTED = "expected a feature line like `F1. <name>: <summary>. Docs: tasks. Needs: none. Status: not started.`";
 
@@ -26,14 +35,16 @@ export function parseMilestones(text: string): Parsed<MilestoneEntry[]> {
   const milestones: MilestoneEntry[] = [];
   const warnings: ParseNote[] = [];
   let current: MilestoneEntry | undefined;
+  let inExitCriteria = false;
 
   const lines = text.split("\n");
   for (const [index, raw] of lines.entries()) {
     const line = index + 1;
     if (raw.startsWith("## ")) {
+      inExitCriteria = false;
       const heading = HEADING.exec(raw);
       if (heading) {
-        current = { id: heading[1]!, name: heading[2]!.trim(), needs: [], features: [], line };
+        current = { id: heading[1]!, name: heading[2]!.trim(), delivers: "", exitCriteria: [], needs: [], features: [], line };
         milestones.push(current);
       } else if (LOOKS_LIKE_MILESTONE.test(raw)) {
         warnings.push({ line, kind: "error", message: "expected a heading like `## M1. <name>`" });
@@ -45,7 +56,15 @@ export function parseMilestones(text: string): Parsed<MilestoneEntry[]> {
     }
     if (!current) continue;
 
-    if (raw.startsWith("- Needs:")) {
+    const item = NESTED_ITEM.exec(raw);
+    if (inExitCriteria && item) {
+      current.exitCriteria.push(item[1]!.trim());
+      continue;
+    }
+    inExitCriteria = raw.trimEnd() === "- Exit criteria:";
+    if (raw.startsWith("- Delivers:")) {
+      current.delivers = raw.slice("- Delivers:".length).trim();
+    } else if (raw.startsWith("- Needs:")) {
       current.needs = firstSentence(raw.slice("- Needs:".length)).match(/\bM\d+\b/g) ?? [];
     } else if (FEATURE_START.test(raw)) {
       const match = FEATURE.exec(raw);

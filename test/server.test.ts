@@ -1,4 +1,4 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { connect, createServer as createNetServer, type Server as NetServer } from "node:net";
 import { join } from "node:path";
@@ -147,6 +147,176 @@ describe("/api/project", () => {
   it("returns 404 for an unknown api path", async () => {
     const s = await start();
     expect((await api(s, "/api/nope")).status).toBe(404);
+  });
+});
+
+describe("/api/file", () => {
+  mkdirSync(join(ledgerPath, "m1-core", "f1-base"), { recursive: true });
+  writeFileSync(join(ledgerPath, "m1-core", "f1-base", "tasks.md"), "# Base — Tasks\n");
+  writeFileSync(join(repo, "secret.md"), "outside\n");
+  symlinkSync(join(repo, "secret.md"), join(ledgerPath, "escape.md"));
+  symlinkSync(join(ledgerPath, "requirements.md"), join(ledgerPath, "alias.md"));
+
+  const file = (s: RunningServer, path: string) => api(s, `/api/file?path=${encodeURIComponent(path)}`);
+
+  it("returns the text of a file in the project folder", async () => {
+    const res = await file(await start(), "m1-core/f1-base/tasks.md");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(await res.text()).toBe("# Base — Tasks\n");
+  });
+
+  it("follows a symlink that stays inside the project folder", async () => {
+    expect(await (await file(await start(), "alias.md")).text()).toBe("# ledger\n");
+  });
+
+  it.each([
+    ["a path up and out", "../../secret.md"],
+    ["a path up and out after a folder", "m1-core/../../../secret.md"],
+    ["an absolute path outside", join(repo, "secret.md")],
+    ["a symlink that points outside", "escape.md"],
+    ["a sibling project", "../api/requirements.md"],
+  ])("refuses %s with 403", async (_label, path) => {
+    expect((await file(await start(), path)).status).toBe(403);
+  });
+
+  it.each([
+    ["a missing file", "nope.md"],
+    ["a folder", "m1-core"],
+    ["the project folder itself", ""],
+  ])("returns 404 for %s", async (_label, path) => {
+    expect((await file(await start(), path)).status).toBe(404);
+  });
+
+  it("returns 404 while no project is selected", async () => {
+    expect((await file(await start(null), "requirements.md")).status).toBe(404);
+  });
+
+  it("returns 404 when the project folder is gone", async () => {
+    const goneDir = join(repo, "specs", "vanished");
+    mkdirSync(goneDir);
+    writeFileSync(join(goneDir, "requirements.md"), "# vanished\n");
+    running = await startServer({ port: 0, projects, current: { name: "vanished", dir: goneDir }, uiDir: uiDir() });
+    rmSync(goneDir, { recursive: true });
+    expect((await file(running, "requirements.md")).status).toBe(404);
+  });
+
+  it("needs the token", async () => {
+    const s = await start();
+    expect((await fetch(`${s.url}/api/file?path=requirements.md`)).status).toBe(403);
+  });
+
+  it("rejects other methods", async () => {
+    expect((await api(await start(), "/api/file?path=requirements.md", { method: "POST" })).status).toBe(405);
+  });
+});
+
+describe("/api/context", () => {
+  const MB = 1024 * 1024;
+  const upload = (s: RunningServer, name: string, body: BlobPart = "# note\n", field = "file") => {
+    const form = new FormData();
+    form.append(field, new File([body], name));
+    return api(s, "/api/context", { method: "POST", body: form });
+  };
+  const contextDir = join(ledgerPath, "context");
+  afterEach(() => rmSync(contextDir, { recursive: true, force: true }));
+
+  it.each([["notes.md"], ["spec.markdown"], ["hld.pdf"], ["flow.png"], ["photo.JPG"], ["photo.jpeg"], ["anim.gif"], ["shot.webp"], ["chart.svg"]])(
+    "copies %s into context/, making the folder",
+    async (name) => {
+      const res = await upload(await start(), name, "bytes\n");
+      expect(res.status).toBe(201);
+      expect(await res.json()).toEqual({ path: `context/${name}` });
+      expect(readFileSync(join(contextDir, name), "utf8")).toBe("bytes\n");
+    },
+  );
+
+  it("copies binary content byte for byte", async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 255, 13, 10]);
+    expect((await upload(await start(), "pixel.png", bytes)).status).toBe(201);
+    expect(new Uint8Array(readFileSync(join(contextDir, "pixel.png")))).toEqual(bytes);
+  });
+
+  it.each([["run.sh"], ["page.html"], ["notes.txt"], ["Makefile"]])("refuses %s with 415 and writes nothing", async (name) => {
+    expect((await upload(await start(), name)).status).toBe(415);
+    expect(existsSync(join(contextDir, name))).toBe(false);
+  });
+
+  it("refuses a name that exists with 409 and keeps the old file", async () => {
+    const s = await start();
+    await upload(s, "notes.md", "first\n");
+    expect((await upload(s, "notes.md", "second\n")).status).toBe(409);
+    expect(readFileSync(join(contextDir, "notes.md"), "utf8")).toBe("first\n");
+  });
+
+  it("answers 500 when context/ cannot be made, and keeps serving", async () => {
+    writeFileSync(contextDir, "a file where the folder should be\n");
+    const s = await start();
+    expect((await upload(s, "notes.md")).status).toBe(500);
+    expect((await api(s, "/api/project")).status).toBe(200);
+  });
+
+  it("answers 500 when context/ cannot be written to", async () => {
+    mkdirSync(contextDir, { mode: 0o555 });
+    expect((await upload(await start(), "notes.md")).status).toBe(500);
+    expect(existsSync(join(contextDir, "notes.md"))).toBe(false);
+  });
+
+  it("takes a file of exactly 20 MB", async () => {
+    expect((await upload(await start(), "big.pdf", new Uint8Array(20 * MB))).status).toBe(201);
+  });
+
+  it("refuses a file over 20 MB with 413 and writes nothing", async () => {
+    expect((await upload(await start(), "huge.pdf", new Uint8Array(20 * MB + 1))).status).toBe(413);
+    expect(existsSync(join(contextDir, "huge.pdf"))).toBe(false);
+  });
+
+  it("refuses a body far over the limit with 413", async () => {
+    expect((await upload(await start(), "huge.pdf", new Uint8Array(30 * MB))).status).toBe(413);
+  });
+
+  it.each([
+    ["a body that is not multipart", () => ({ body: "plain", headers: { "Content-Type": "text/plain" } })],
+    ["a form without a file field", () => ({ body: (() => { const f = new FormData(); f.append("file", "text only"); return f; })() })],
+  ])("refuses %s with 400", async (_label, init) => {
+    expect((await api(await start(), "/api/context", { method: "POST", ...init() })).status).toBe(400);
+  });
+
+  it("refuses a form whose file is under another field with 400", async () => {
+    expect((await upload(await start(), "notes.md", "x", "other")).status).toBe(400);
+  });
+
+  it.each([["../uploaded.md"], ["sub/notes.md"], [".hidden.md"], [".."]])("refuses the name %s with 400", async (name) => {
+    const s = await start();
+    const boundary = "b0undary";
+    const body = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\n\r\nx\r\n--${boundary}--\r\n`;
+    const res = await api(s, "/api/context", { method: "POST", body, headers: { "Content-Type": `multipart/form-data; boundary=${boundary}` } });
+    expect(res.status).toBe(400);
+    expect(existsSync(join(ledgerPath, "uploaded.md"))).toBe(false);
+    expect(existsSync(contextDir)).toBe(false);
+  });
+
+  it("returns 404 while no project is selected", async () => {
+    expect((await upload(await start(null), "notes.md")).status).toBe(404);
+  });
+
+  it("needs the token", async () => {
+    const s = await start();
+    const form = new FormData();
+    form.append("file", new File(["x"], "notes.md"));
+    expect((await fetch(`${s.url}/api/context`, { method: "POST", body: form })).status).toBe(403);
+  });
+
+  it("rejects other methods", async () => {
+    expect((await api(await start(), "/api/context")).status).toBe(405);
+  });
+
+  it("lists the new file in the model through the watcher", async () => {
+    const s = await start();
+    expect((await upload(s, "notes.md")).status).toBe(201);
+    await expect
+      .poll(async () => (await (await api(s, "/api/project")).json()).model.contextFiles.map((f: { path: string }) => f.path), { timeout: 2000 })
+      .toEqual(["context/notes.md"]);
   });
 });
 
