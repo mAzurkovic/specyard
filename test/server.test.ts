@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { connect, createServer as createNetServer, type Server as NetServer } from "node:net";
 import { join } from "node:path";
@@ -7,10 +7,15 @@ import type { Project } from "../src/projects.js";
 import { startServer, type RunningServer } from "../src/server.js";
 import { tempDir } from "./helpers.js";
 
-const projects: Project[] = [
-  { name: "api", dir: "/repo/specs/api" },
-  { name: "ledger", dir: "/repo/specs/ledger" },
-];
+const repo = tempDir("repo");
+const projects: Project[] = ["api", "ledger"].map((name) => {
+  const dir = join(repo, "specs", name);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "requirements.md"), `# ${name}\n`);
+  return { name, dir };
+});
+const apiPath = projects[0]!.dir;
+const ledgerPath = projects[1]!.dir;
 
 function uiDir(): string {
   const dir = tempDir("ui");
@@ -84,22 +89,29 @@ describe("api access", () => {
 });
 
 describe("/api/project", () => {
-  it("returns the projects and the current one", async () => {
+  it("returns the projects, the current one and its model", async () => {
     const s = await start();
-    expect(await (await api(s, "/api/project")).json()).toEqual({
-      projects: [
-        { name: "api", path: "/repo/specs/api" },
-        { name: "ledger", path: "/repo/specs/ledger" },
-      ],
-      current: { name: "ledger", path: "/repo/specs/ledger" },
-    });
+    const body = await (await api(s, "/api/project")).json();
+    expect(body.projects).toEqual([
+      { name: "api", path: apiPath },
+      { name: "ledger", path: ledgerPath },
+    ]);
+    expect(body.current).toEqual({ name: "ledger", path: ledgerPath });
+    expect(body.model).toMatchObject({ name: "ledger", files: { requirements: true, design: false, milestones: false } });
+  });
+
+  it("has no model while no project is selected", async () => {
+    const s = await start(null);
+    expect((await (await api(s, "/api/project")).json()).model).toBeNull();
   });
 
   it("selects a listed project", async () => {
     const s = await start(null);
     const res = await api(s, "/api/project", { method: "POST", body: JSON.stringify({ name: "api" }) });
     expect(res.status).toBe(204);
-    expect((await (await api(s, "/api/project")).json()).current).toEqual({ name: "api", path: "/repo/specs/api" });
+    const body = await (await api(s, "/api/project")).json();
+    expect(body.current).toEqual({ name: "api", path: apiPath });
+    expect(body.model.name).toBe("api");
   });
 
   it.each([['{"name":"other"}'], ["not json"], ['{"name":3}']])("rejects selecting %s", async (body) => {
@@ -111,6 +123,20 @@ describe("/api/project", () => {
     const s = await start(null);
     const body = JSON.stringify({ name: "api", pad: "x".repeat(70_000) });
     expect((await api(s, "/api/project", { method: "POST", body })).status).toBe(400);
+  });
+
+  it("selecting a project whose folder is gone keeps the server up and shows no model", async () => {
+    const goneDir = join(repo, "specs", "gone");
+    mkdirSync(goneDir);
+    writeFileSync(join(goneDir, "requirements.md"), "# gone\n");
+    const gone: Project = { name: "gone", dir: goneDir };
+    running = await startServer({ port: 0, projects: [...projects, gone], current: projects[1]!, uiDir: uiDir() });
+    rmSync(goneDir, { recursive: true });
+    const res = await api(running, "/api/project", { method: "POST", body: JSON.stringify({ name: "gone" }) });
+    expect(res.status).toBe(204);
+    const body = await (await api(running, "/api/project")).json();
+    expect(body.current.name).toBe("gone");
+    expect(body.model).toBeNull();
   });
 
   it("rejects other methods", async () => {
@@ -151,7 +177,20 @@ describe("/api/events", () => {
     const [first, second] = await pending;
     expect(first).toContain("event: project");
     expect(JSON.parse(first!.split("data: ")[1]!).current).toBeNull();
-    expect(JSON.parse(second!.split("data: ")[1]!).current).toEqual({ name: "api", path: "/repo/specs/api" });
+    expect(JSON.parse(second!.split("data: ")[1]!).current).toEqual({ name: "api", path: apiPath });
+  });
+
+  it("sends the rebuilt model within 2 s of a spec file change", async () => {
+    const s = await start();
+    const res = await fetch(`${s.url}/api/events?t=${s.token}`);
+    const pending = readEvents(res, 2);
+    await new Promise((r) => setTimeout(r, 300));
+    const changedAt = Date.now();
+    writeFileSync(join(ledgerPath, "design.md"), "# design\n");
+    const [, second] = await pending;
+    expect(Date.now() - changedAt).toBeLessThan(2000);
+    expect(JSON.parse(second!.split("data: ")[1]!).model.files.design).toBe(true);
+    rmSync(join(ledgerPath, "design.md"));
   });
 });
 

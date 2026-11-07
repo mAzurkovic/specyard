@@ -9,7 +9,7 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
 - Builds: `cli.ts` (start command, `--path`, `--version`), `checks.ts`, `server.ts` (static UI, `GET /api/project`, `GET /api/file`, `GET /api/events`, token and Origin check), `parser/` (all 4 modules), `model.ts` (stages from files, dependency graph, critical path, can-start-now, stale flags), `watch.ts` (project folder), `hashes.ts` (hashes, sources line write), `git.ts` (default branch, file history), `ui/` (shell, graph, list, feature pages, stale page, Blueprint light).
 - Covers: FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR10 (list), FR11, FR14, FR15, FR16 (file-derived stages), FR17, FR18, FR19, FR20, FR21, FR22, FR45 (stale count), FR46, FR47, FR48, FR49, FR51, NFR1, NFR3, NFR4, NFR6, NFR7, NFR8, NFR9, NFR10.
 - Exit criteria:
-  - `specyard` in `~/workplace/loremaster` shows its 3 milestones, their features, dependency edges and task states.
+  - `specyard` in `~/workplace/loremaster` shows its milestones, their features, dependency edges and task states.
   - Claude Code logged out: no UI starts, fix command printed (FR3).
   - A spec file edit shows in the UI within 2 s (NFR1).
   - Graph and list load in under 1 s on a generated tree of 20 milestones, 200 features, 2,000 tasks (NFR3).
@@ -19,8 +19,8 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
   - Changing a source file flags the generated file and every file built from it; "Mark as not affected" clears the flag and changes only the sources line (FR46, FR51).
 - Needs: none.
 - Features:
-  - F1. Start and serve: CLI, start checks, project picker and `--path`, server on 127.0.0.1 with token and Origin check, SSE, UI header shell. Docs: tasks. Needs: none. Status: not started.
-  - F2. Spec tree model: parsers with parse errors, model build (stages, dependencies, critical path, can-start-now), watcher pushes the model over SSE. Docs: tasks. Needs: F1. Status: not started.
+  - F1. Start and serve: CLI, start checks, project picker and `--path`, server on 127.0.0.1 with token and Origin check, SSE, UI header shell. Docs: tasks. Needs: none. Status: done.
+  - F2. Spec tree model: parsers with parse errors, model build (stages, dependencies, critical path, can-start-now), watcher pushes the model over SSE. Docs: tasks. Needs: F1. Status: in progress.
   - F3. Graph and list views: milestone lanes and SVG edges, task tree with state icons, header counts, Blueprint light style. Docs: tasks. Needs: F2. Status: not started.
   - F4. Feature pages and context: spec tabs, required and missing file states, context list, Add context file. Docs: tasks. Needs: F2. Status: not started.
   - F5. Stale detection: hashes, stale flags passed down, stale page with git-history diff, Mark as not affected. Docs: tasks. Needs: F2, F3. Status: not started.
