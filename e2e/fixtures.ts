@@ -14,3 +14,14 @@ export function repoWithProjects(names: string[]): string {
   }
   return repo;
 }
+
+/** A temp repo with one project `specs/ledger` holding the given files (paths relative to the project). */
+export function repoWithFiles(files: Record<string, string>): string {
+  const repo = mkdtempSync(join(tmpdir(), "specyard-e2e-"));
+  for (const [path, text] of Object.entries(files)) {
+    const full = join(repo, "specs", "ledger", path);
+    mkdirSync(join(full, ".."), { recursive: true });
+    writeFileSync(full, text);
+  }
+  return repo;
+}

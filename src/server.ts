@@ -5,7 +5,7 @@ import { extname, join, normalize, sep } from "node:path";
 import { authorize } from "./auth.js";
 import { buildModel, type ProjectModel } from "./model.js";
 import type { Project } from "./projects.js";
-import { readProject } from "./readProject.js";
+import { readMtimes, readProject } from "./readProject.js";
 import { watchProject } from "./watch.js";
 
 export type RunningServer = { url: string; address: string; token: string; close: () => Promise<void> };
@@ -38,7 +38,8 @@ export async function startServer(options: Options): Promise<RunningServer> {
 
   const rebuild = async (project: Project) => {
     try {
-      const next = buildModel(project.name, await readProject(project.dir));
+      const files = await readProject(project.dir);
+      const next = buildModel(project.name, files, await readMtimes(project.dir, files.keys()));
       if (current === project) model = next;
     } catch (error) {
       // Keep showing the last good model; the next change tries again.

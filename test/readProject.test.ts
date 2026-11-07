@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { readProject } from "../src/readProject.js";
+import { readMtimes, readProject } from "../src/readProject.js";
 import { tempDir } from "./helpers.js";
 
 it("reads the project files and each feature folder's spec files, nothing else", async () => {
@@ -35,4 +35,12 @@ it("reads the project files and each feature folder's spec files, nothing else",
 
 it("reads an empty folder as no files", async () => {
   expect((await readProject(tempDir("empty"))).size).toBe(0);
+});
+
+it("reads the modified time of each given file, skipping missing ones", async () => {
+  const dir = tempDir("times");
+  writeFileSync(join(dir, "design.md"), "# d\n");
+  const times = await readMtimes(dir, ["design.md", "missing.md"]);
+  expect([...times.keys()]).toEqual(["design.md"]);
+  expect(Math.abs(times.get("design.md")! - Date.now())).toBeLessThan(60_000);
 });

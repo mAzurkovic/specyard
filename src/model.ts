@@ -40,6 +40,8 @@ export type Feature = {
   parents: Parent[];
   fixTasks: TaskProgress[];
   implementable: boolean;
+  /** Newest modified time (ms) of the feature's files; undefined when it has none. */
+  updatedAt: number | undefined;
 };
 
 export type Milestone = { id: string; name: string; needs: string[]; features: string[] };
@@ -59,7 +61,7 @@ const FEATURE_FILE = /^m(\d+)-[^/]+\/f(\d+)-[^/]+\/(requirements|design|tasks|pr
 
 export const featureId = (milestone: string, feature: string) => `${milestone}·${feature}`;
 
-export function buildModel(name: string, files: ProjectFiles): ProjectModel {
+export function buildModel(name: string, files: ProjectFiles, mtimes: Map<string, number> = new Map()): ProjectModel {
   const issues: Issue[] = [];
   const read = <T>(file: string, parsed: Parsed<T>): T | undefined => {
     if (!parsed.ok) {
@@ -79,7 +81,7 @@ export function buildModel(name: string, files: ProjectFiles): ProjectModel {
     if (match) dirs.set(featureId(`M${match[1]}`, `F${match[2]}`), path.slice(0, path.lastIndexOf("/")));
   }
 
-  const features = entries.flatMap((m) => m.features.map((f) => readFeature(m.id, f, dirs, files, read)));
+  const features = entries.flatMap((m) => m.features.map((f) => readFeature(m.id, f, dirs, files, mtimes, read)));
   const byId = new Map(features.map((f) => [f.id, f]));
   const lines = new Map(entries.flatMap((m) => m.features.map((f) => [featureId(m.id, f.id), f.line] as const)));
 
@@ -121,6 +123,7 @@ function readFeature(
   entry: FeatureEntry,
   dirs: Map<string, string>,
   files: ProjectFiles,
+  mtimes: Map<string, number>,
   read: <T>(file: string, parsed: Parsed<T>) => T | undefined,
 ): Feature {
   const id = featureId(milestone, entry.id);
@@ -160,7 +163,12 @@ function readFeature(
     })),
     fixTasks: progress?.tasks.filter((t) => /^X\d+$/.test(t.id)) ?? [],
     implementable: !hasFile.tasks || parentEntries !== undefined,
+    updatedAt: newest(dir === undefined ? [] : [...mtimes].filter(([path]) => path.startsWith(`${dir}/`)).map(([, time]) => time)),
   };
+}
+
+function newest(times: number[]): number | undefined {
+  return times.length === 0 ? undefined : Math.max(...times);
 }
 
 function nextAction(f: Feature): string | undefined {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
+import type { ProjectModel } from "../../src/model.js";
 
 export type ProjectRef = { name: string; path: string };
-export type ProjectState = { projects: ProjectRef[]; current: ProjectRef | null };
+export type ProjectState = { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null };
 
 const token = new URLSearchParams(location.search).get("t") ?? "";
 

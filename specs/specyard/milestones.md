@@ -6,7 +6,7 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
 
 ## M1. Read-only view
 - Delivers: `specyard` starts in a repo, checks its setup, and serves a live graph, list and feature pages of the spec tree, with stale flags. No skill runs.
-- Builds: `cli.ts` (start command, `--path`, `--version`), `checks.ts`, `server.ts` (static UI, `GET /api/project`, `GET /api/file`, `GET /api/events`, token and Origin check), `parser/` (all 4 modules), `model.ts` (stages from files, dependency graph, critical path, can-start-now, stale flags), `watch.ts` (project folder), `hashes.ts` (hashes, sources line write), `git.ts` (default branch, file history), `ui/` (shell, graph, list, feature pages, stale page, Blueprint light).
+- Builds: `cli.ts` (start command, `--path`, `--version`), `checks.ts`, `server.ts` (static UI, `GET /api/project`, `GET /api/file`, `GET /api/events`, `POST /api/context`, token and Origin check), `parser/` (all 4 modules), `model.ts` (stages from files, dependency graph, critical path, can-start-now, stale flags), `watch.ts` (project folder), `hashes.ts` (hashes, sources line write), `git.ts` (default branch, file history), `ui/` (shell, graph, list, feature pages, stale page, Blueprint light).
 - Covers: FR1, FR2, FR3, FR4, FR5, FR6, FR7, FR8, FR9, FR10 (list), FR11, FR14, FR15, FR16 (file-derived stages), FR17, FR18, FR19, FR20, FR21, FR22, FR45 (stale count), FR46, FR47, FR48, FR49, FR51, NFR1, NFR3, NFR4, NFR6, NFR7, NFR8, NFR9, NFR10.
 - Exit criteria:
   - `specyard` in `~/workplace/loremaster` shows its milestones, their features, dependency edges and task states.
@@ -20,14 +20,14 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
 - Needs: none.
 - Features:
   - F1. Start and serve: CLI, start checks, project picker and `--path`, server on 127.0.0.1 with token and Origin check, SSE, UI header shell. Docs: tasks. Needs: none. Status: done.
-  - F2. Spec tree model: parsers with parse errors, model build (stages, dependencies, critical path, can-start-now), watcher pushes the model over SSE. Docs: tasks. Needs: F1. Status: in progress.
-  - F3. Graph and list views: milestone lanes and SVG edges, task tree with state icons, header counts, Blueprint light style. Docs: tasks. Needs: F2. Status: not started.
+  - F2. Spec tree model: parsers with parse errors, model build (stages, dependencies, critical path, can-start-now), watcher pushes the model over SSE. Docs: tasks. Needs: F1. Status: done.
+  - F3. Graph and list views: milestone lanes and SVG edges, task tree with state icons, header counts, Blueprint light style. Docs: tasks. Needs: F2. Status: in progress.
   - F4. Feature pages and context: spec tabs, required and missing file states, context list, Add context file. Docs: tasks. Needs: F2. Status: not started.
   - F5. Stale detection: hashes, stale flags passed down, stale page with git-history diff, Mark as not affected. Docs: tasks. Needs: F2, F3. Status: not started.
 
 ## M2. Planning runs and inbox
 - Delivers: plan a project from the UI. Run `/to-brd`, `/to-design`, `/to-milestones`, `/to-tasks` and `/expert-review`, answer question batches and approvals in the inbox, review diffs, approve tasks, act on stale files. Ships the changed skills and `specyard skills install`.
-- Builds: `skills.ts` and bundled `skills/` (all skill changes), `runs/RunManager.ts` (planning runs: start, events, logs), `runs/events.ts`, `inbox.ts`, `notify.ts`, `hashes.ts` (blobs), `server.ts` (`POST /api/runs`, `GET /api/runs/:id`, `POST /api/inbox/:waitId`, `POST /api/features/:id/approve`, `POST /api/context`), `model.ts` (run-derived stages: running, needs you), `ui/` (run view, inbox, diff, approve and re-run, stale actions).
+- Builds: `skills.ts` and bundled `skills/` (all skill changes), `runs/RunManager.ts` (planning runs: start, events, logs), `runs/events.ts`, `inbox.ts`, `notify.ts`, `hashes.ts` (blobs), `server.ts` (`POST /api/runs`, `GET /api/runs/:id`, `POST /api/inbox/:waitId`, `POST /api/features/:id/approve`), `model.ts` (run-derived stages: running, needs you), `ui/` (run view, inbox, diff, approve and re-run, stale actions).
 - Covers: FR12, FR13, FR23, FR24, FR25, FR26, FR36 (planning runs), FR37, FR38, FR40, FR41, FR42, FR43, FR44, FR45 (inbox count), FR50, FR58, FR59, FR60, FR61, FR62, FR63, FR64, FR65, FR66, FR67, NFR2.
 - Exit criteria:
   - `/to-tasks` on a feature runs from the UI, its question batch is answered in the inbox, and the new tasks.md shows as a diff with `Status: draft` and a sources line (FR24, FR42, FR65, FR66).

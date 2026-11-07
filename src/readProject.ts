@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { ProjectFiles } from "./model.js";
 
@@ -22,6 +22,18 @@ export async function readProject(projectDir: string): Promise<ProjectFiles> {
     }),
   );
   return files;
+}
+
+/** Modified time in ms of each path that exists. */
+export async function readMtimes(projectDir: string, paths: Iterable<string>): Promise<Map<string, number>> {
+  const times = new Map<string, number>();
+  await Promise.all(
+    [...paths].map(async (path) => {
+      const info = await stat(join(projectDir, path)).catch(missingAsUndefined);
+      if (info) times.set(path, info.mtimeMs);
+    }),
+  );
+  return times;
 }
 
 async function subdirs(dir: string, pattern: RegExp): Promise<string[]> {
