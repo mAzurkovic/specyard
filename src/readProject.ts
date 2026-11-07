@@ -1,9 +1,10 @@
 import { readdir, readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
-import type { ProjectFiles } from "./model.js";
+import { join, relative } from "node:path";
+import type { ContextFile, ProjectFiles } from "./model.js";
 
 const PROJECT_FILES = ["requirements.md", "design.md", "milestones.md"];
 const FEATURE_FILES = ["requirements.md", "design.md", "tasks.md", "progress.md"];
+const CONTEXT_DIRS = ["context", "mocks"];
 const MILESTONE_DIR = /^m\d+-/;
 const FEATURE_DIR = /^f\d+-/;
 
@@ -34,6 +35,25 @@ export async function readMtimes(projectDir: string, paths: Iterable<string>): P
     }),
   );
   return times;
+}
+
+/** Every file under the project's `context/` and `mocks/` folders, sorted by path. */
+export async function readContextFiles(projectDir: string): Promise<ContextFile[]> {
+  const found = await Promise.all(
+    CONTEXT_DIRS.map(async (dir) => {
+      const entries = await readdir(join(projectDir, dir), { recursive: true, withFileTypes: true }).catch(missingAsUndefined);
+      return (entries ?? []).filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name));
+    }),
+  );
+  const files: ContextFile[] = [];
+  await Promise.all(
+    found.flat().map(async (file) => {
+      // A file removed since the listing is simply not there any more.
+      const info = await stat(file).catch(missingAsUndefined);
+      if (info) files.push({ path: relative(projectDir, file), size: info.size, mtime: Math.round(info.mtimeMs) });
+    }),
+  );
+  return files.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 async function subdirs(dir: string, pattern: RegExp): Promise<string[]> {

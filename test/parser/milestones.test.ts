@@ -51,6 +51,28 @@ describe("parseMilestones", () => {
     expect(m3?.features).toEqual([]);
   });
 
+  it("reads what a milestone delivers and its exit criteria", () => {
+    const result = parseMilestones(`## M1. Core
+- Delivers: \`specyard\` starts in a repo.
+- Builds: cli.ts.
+- Exit criteria:
+  - Start to UI ready under 3 s.
+  - A request without the token: 403.
+- Needs: none.
+- Features:
+  - F1. Base: x. Docs: tasks. Needs: none. Status: done.
+
+## M2. Next
+- Needs: M1.
+`);
+    if (!result.ok) throw new Error(result.expected);
+    const [m1, m2] = result.value;
+    expect(m1?.delivers).toBe("`specyard` starts in a repo.");
+    expect(m1?.exitCriteria).toEqual(["Start to UI ready under 3 s.", "A request without the token: 403."]);
+    expect(m1?.features.map((f) => f.id)).toEqual(["F1"]);
+    expect([m2?.delivers, m2?.exitCriteria]).toEqual(["", []]);
+  });
+
   it("treats a feature with no Needs as having no dependencies, with a warning", () => {
     const result = parseMilestones("## M1. Core\n- Needs: none.\n- Features:\n  - F1. Thing: does it. Docs: tasks. Status: not started.\n");
     if (!result.ok) throw new Error(result.expected);

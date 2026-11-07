@@ -1,11 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { extname, join, normalize, sep } from "node:path";
+import { basename, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import { authorize } from "./auth.js";
 import { buildModel, type ProjectModel } from "./model.js";
 import type { Project } from "./projects.js";
-import { readMtimes, readProject } from "./readProject.js";
+import { readContextFiles, readMtimes, readProject } from "./readProject.js";
 import { watchProject } from "./watch.js";
 
 export type RunningServer = { url: string; address: string; token: string; close: () => Promise<void> };
@@ -16,6 +16,10 @@ const HOST = "127.0.0.1";
 const PORT_TRIES = 20;
 const HEARTBEAT_MS = 15_000;
 const MAX_BODY = 64 * 1024;
+const MAX_UPLOAD = 20 * 1024 * 1024;
+// Room for the multipart boundary and part headers around the uploaded file.
+const MULTIPART_SLACK = 64 * 1024;
+const CONTEXT_TYPES = new Set([".md", ".markdown", ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]);
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -38,8 +42,8 @@ export async function startServer(options: Options): Promise<RunningServer> {
 
   const rebuild = async (project: Project) => {
     try {
-      const files = await readProject(project.dir);
-      const next = buildModel(project.name, files, await readMtimes(project.dir, files.keys()));
+      const [files, contextFiles] = await Promise.all([readProject(project.dir), readContextFiles(project.dir)]);
+      const next = buildModel(project.name, files, await readMtimes(project.dir, files.keys()), contextFiles);
       if (current === project) model = next;
     } catch (error) {
       // Keep showing the last good model; the next change tries again.
@@ -98,6 +102,26 @@ export async function startServer(options: Options): Promise<RunningServer> {
       });
       return;
     }
+    if (url.pathname === "/api/file") {
+      if (req.method !== "GET") return void send(res, 405);
+      if (!current) return void send(res, 404);
+      return void readInside(current.dir, url.searchParams.get("path") ?? "").then((file) => {
+        if (typeof file === "number") return send(res, file);
+        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(file);
+      });
+    }
+    if (url.pathname === "/api/context") {
+      if (req.method !== "POST") return void send(res, 405);
+      if (!current) return void send(res, 404);
+      return void addContextFile(current.dir, req).then(
+        (added) => (typeof added === "number" ? send(res, added) : send(res, 201, JSON.stringify({ path: added }))),
+        (error: Error) => {
+          console.error(`specyard: cannot add a context file: ${error.message}`);
+          send(res, 500);
+        },
+      );
+    }
     send(res, 404);
   });
 
@@ -142,17 +166,73 @@ function send(res: ServerResponse, status: number, json?: string): void {
 
 /** Resolves to undefined when the body is missing, aborted, too large or not JSON. Never rejects. */
 async function readJson(req: IncomingMessage): Promise<unknown> {
-  let size = 0;
-  const chunks: Buffer[] = [];
   try {
-    for await (const chunk of req) {
-      size += (chunk as Buffer).length;
-      if (size > MAX_BODY) return undefined;
-      chunks.push(chunk as Buffer);
-    }
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const body = await readBody(req, MAX_BODY);
+    return body && JSON.parse(body.toString("utf8"));
   } catch {
     return undefined;
+  }
+}
+
+/** The whole body, or undefined when it is over `limit` bytes. Rejects when the request aborts. */
+async function readBody(req: IncomingMessage, limit: number): Promise<Buffer | undefined> {
+  let size = 0;
+  const chunks: Buffer[] = [];
+  // Read to the end even when too large, so the client gets the answer and not a reset connection.
+  for await (const chunk of req) {
+    size += (chunk as Buffer).length;
+    if (size <= limit) chunks.push(chunk as Buffer);
+  }
+  return size > limit ? undefined : Buffer.concat(chunks);
+}
+
+/** Copies the `file` part of a multipart body into the project's `context/`. Resolves to its path, or the status that says why not. */
+async function addContextFile(projectDir: string, req: IncomingMessage): Promise<string | 400 | 409 | 413 | 415> {
+  let form: FormData;
+  try {
+    const body = await readBody(req, MAX_UPLOAD + MULTIPART_SLACK);
+    if (body === undefined) return 413;
+    const headers = { "Content-Type": req.headers["content-type"] ?? "" };
+    form = await new Request("http://localhost/", { method: "POST", headers, body: new Uint8Array(body) }).formData();
+  } catch {
+    // An aborted upload or a body that is not multipart.
+    return 400;
+  }
+  const file = form.get("file");
+  if (!(file instanceof File)) return 400;
+  if (file.size > MAX_UPLOAD) return 413;
+  const name = file.name;
+  if (name !== basename(name) || name.startsWith(".")) return 400;
+  if (!CONTEXT_TYPES.has(extname(name).toLowerCase())) return 415;
+
+  const dir = join(projectDir, "context");
+  await mkdir(dir, { recursive: true });
+  try {
+    await writeFile(join(dir, name), new Uint8Array(await file.arrayBuffer()), { flag: "wx" });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return 409;
+    throw error;
+  }
+  return `context/${name}`;
+}
+
+/** True for `root` itself and anything below it. */
+const isInside = (root: string, path: string) => {
+  const rel = relative(root, path);
+  return rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
+};
+
+/** The text of a file under `root`, or 403 when the path or its symlink target leaves `root`, or 404 when it cannot be read. */
+async function readInside(root: string, path: string): Promise<string | 403 | 404> {
+  const target = resolve(root, path);
+  if (!isInside(root, target)) return 403;
+  try {
+    const [realRoot, real] = await Promise.all([realpath(root), realpath(target)]);
+    if (!isInside(realRoot, real)) return 403;
+    return await readFile(real, "utf8");
+  } catch {
+    // Missing, a folder, or not readable: all mean there is no file to show.
+    return 404;
   }
 }
 
