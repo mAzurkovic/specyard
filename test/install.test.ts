@@ -8,8 +8,8 @@ const root = join(import.meta.dirname, "..");
 const prefix = mkdtempSync(join(tmpdir(), "specyard-install-"));
 
 beforeAll(() => {
-  execFileSync("npx", ["tsc", "-p", "tsconfig.build.json"], { cwd: root });
-  const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", prefix], { cwd: root, encoding: "utf8" }).trim();
+  // prepack builds first and prints the build log; npm prints the tarball name last.
+  const tarball = execFileSync("npm", ["pack", "--silent", "--pack-destination", prefix], { cwd: root, encoding: "utf8" }).trim().split("\n").at(-1)!;
   execFileSync("npm", ["install", "-g", "--silent", "--prefix", prefix, join(prefix, tarball)]);
 }, 120_000);
 

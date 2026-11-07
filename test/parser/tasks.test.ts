@@ -46,6 +46,11 @@ describe("parseTasks", () => {
     ]);
   });
 
+  it("reads an uppercase [X] as done", () => {
+    const result = parseTasks("## 1. A [serial]\n- [X] 1.1 Done in caps.\n");
+    expect(result.ok && result.value[0]?.tasks[0]?.done).toBe(true);
+  });
+
   it("reports a task with no id", () => {
     expect(parseTasks("## 1. A [serial]\n- [ ] do the thing\n")).toMatchObject({ ok: false, line: 2, expected: "a task like `- [ ] 1.1 <text>`" });
   });

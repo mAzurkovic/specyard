@@ -30,7 +30,6 @@ export function addContextFile(file: File): Promise<Response> {
   return fetch("/api/context", { method: "POST", headers: auth, body });
 }
 
-/** Live project state from the server's event stream; null until the first event. */
 /** Null when the file is not stale (any other failure too: the page then says so). */
 export async function staleDetails(file: string): Promise<StaleDetails | null> {
   const res = await fetch(`/api/stale?file=${encodeURIComponent(file)}`, { headers: auth });
@@ -41,6 +40,7 @@ export function markNotAffected(file: string): Promise<Response> {
   return fetch("/api/stale/not-affected", { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ file }) });
 }
 
+/** Live project state from the server's event stream; null until the first event. */
 export function useProjectState(): ProjectState | null {
   const [state, setState] = useState<ProjectState | null>(null);
   useEffect(() => {

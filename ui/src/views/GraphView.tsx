@@ -25,7 +25,7 @@ export function GraphView({ model }: { model: ProjectModel }) {
   const byId = new Map(model.features.map((f) => [f.id, f]));
   const critical = new Set(model.criticalPath);
   const picked = selected === undefined ? undefined : byId.get(selected);
-  const issues = issuesByFeature(model.features, model.issues);
+  const issues = issuesByFeature(model.issues);
 
   return (
     <>
@@ -65,6 +65,7 @@ export function GraphView({ model }: { model: ProjectModel }) {
                 key={n.id}
                 role="button"
                 tabIndex={0}
+                aria-pressed={selected === n.id}
                 data-feature={n.id}
                 class={`node ${f.stale ? "stale" : tone}${critical.has(n.id) ? " crit" : ""}${selected === n.id ? " sel" : ""}`}
                 style={{ left: `${n.x}px`, top: `${n.y}px` }}
@@ -133,7 +134,7 @@ export function GraphView({ model }: { model: ProjectModel }) {
               </div>
             </>
           ) : (
-            <div class="muted">Click a feature to see its details. Double-click to open it.</div>
+            <div class="muted">Click or press Space to see its details. Double-click or press Enter to open it.</div>
           )}
         </div>
       </div>

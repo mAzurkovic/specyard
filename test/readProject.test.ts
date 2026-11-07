@@ -73,3 +73,35 @@ it("lists every file under context/ and mocks/ with its size and change time, no
 it("lists no context files when context/ and mocks/ do not exist", async () => {
   expect(await readContextFiles(tempDir("bare"))).toEqual([]);
 });
+
+it("skips dot files such as .DS_Store and editor swap files in context/", async () => {
+  const dir = tempDir("dots");
+  mkdirSync(join(dir, "context"), { recursive: true });
+  writeFileSync(join(dir, "context", "hld.md"), "# HLD\n");
+  writeFileSync(join(dir, "context", ".DS_Store"), "x");
+  writeFileSync(join(dir, "context", ".hld.md.swp"), "x");
+  expect((await readContextFiles(dir)).map((f) => f.path)).toEqual(["context/hld.md"]);
+});
+
+it("treats a context folder it cannot read as empty and still lists the other", async () => {
+  const dir = tempDir("notdir");
+  mkdirSync(join(dir, "context"), { recursive: true });
+  writeFileSync(join(dir, "context", "hld.md"), "# HLD\n");
+  writeFileSync(join(dir, "mocks"), "a plain file named mocks");
+  expect((await readContextFiles(dir)).map((f) => f.path)).toEqual(["context/hld.md"]);
+});
+
+it("reuses a context file's hash while its size and mtime are unchanged", async () => {
+  const dir = tempDir("cache");
+  mkdirSync(join(dir, "context"), { recursive: true });
+  const file = join(dir, "context", "hld.md");
+  writeFileSync(file, "# HLD v1\n");
+  const when = new Date("2026-11-01T10:00:00Z");
+  utimesSync(file, when, when);
+  const first = (await readContextFiles(dir))[0]!.hash;
+  writeFileSync(file, "# HLD v2\n");
+  utimesSync(file, when, when);
+  expect((await readContextFiles(dir))[0]!.hash).toBe(first);
+  utimesSync(file, new Date("2026-11-02T10:00:00Z"), new Date("2026-11-02T10:00:00Z"));
+  expect((await readContextFiles(dir))[0]!.hash).toBe(hashText("# HLD v2\n"));
+});

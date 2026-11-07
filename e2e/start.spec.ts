@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { spawn, type ChildProcess } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -101,6 +101,15 @@ test("Ctrl-C right after the URL is printed exits 0", async () => {
     proc.kill("SIGINT");
     expect(await exit).toEqual({ code: 0, signal: null });
   }
+});
+
+test("run from a subfolder of the repo: finds the project in the repo's specs/", async () => {
+  const { path } = stubPath(true);
+  const repo = repoWithProjects(["ledger"]);
+  mkdirSync(join(repo, ".git"));
+  mkdirSync(join(repo, "src", "deep"), { recursive: true });
+  child = run(join(repo, "src", "deep"), [], path);
+  expect(await outputUntil(child, /→ UI at /)).toContain("✓ Project: specs/ledger");
 });
 
 test("logged out: exits 1 with the login command and serves nothing", async () => {

@@ -39,8 +39,9 @@ const FEATURE_STEP: Record<Stage, number> = {
 export function featureSteps(f: Feature): Step[] {
   // Without a file of its own, a feature builds on the project's requirements and design.
   const own = (has: boolean, label: string) => (has ? label : `${label} (project)`);
-  // No stage stands for "needs requirements", so a listed but missing requirements.md holds the stepper at step one.
-  const needsRequirements = f.stage !== "done" && f.docs.includes("requirements") && !f.hasFile.requirements;
+  // No stage stands for "needs requirements": a listed but missing requirements.md holds the stepper at step one,
+  // but only while nothing later (design, tasks) is written.
+  const needsRequirements = f.stage !== "done" && f.docs.includes("requirements") && !f.hasFile.requirements && !f.hasFile.design && !f.hasFile.tasks;
   return upTo(
     [
       own(f.hasFile.requirements || f.docs.includes("requirements"), "Requirements"),

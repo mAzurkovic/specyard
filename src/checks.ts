@@ -57,9 +57,10 @@ export function checkSkills(home: string): CheckResult[] {
   });
 }
 
+/** YAML allows the value quoted and the file in CRLF; both read as the bare version. */
 function frontmatterVersion(text: string): string | undefined {
-  const frontmatter = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
-  return /^version:\s*(\S+)\s*$/m.exec(frontmatter)?.[1];
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
+  return /^version:\s*["']?([^"'\s]+)["']?\s*$/m.exec(frontmatter)?.[1];
 }
 
 /** Numeric compare of an installed version against an expected one; an unreadable part counts as older. */

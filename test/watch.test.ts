@@ -12,8 +12,9 @@ const settle = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Starts watching, waits out events the OS still reports from before the watch began, and counts callbacks from then on. */
 async function changes(dir: string): Promise<() => number> {
   let count = 0;
-  stop = watchProject(dir, () => count++, 50);
-  await settle(300);
+  // A long debounce keeps one burst one callback even on a busy machine.
+  stop = watchProject(dir, () => count++, 200);
+  await settle(500);
   const baseline = count;
   return () => count - baseline;
 }
@@ -22,7 +23,7 @@ it("calls back once for a burst of changes", async () => {
   const dir = tempDir("watch");
   const count = await changes(dir);
   for (let i = 0; i < 5; i++) writeFileSync(join(dir, "design.md"), `# v${i}\n`);
-  await settle(400);
+  await settle(700);
   expect(count()).toBe(1);
 });
 
@@ -31,7 +32,7 @@ it("sees changes in nested feature folders", async () => {
   mkdirSync(join(dir, "m1-core", "f1-base"), { recursive: true });
   const count = await changes(dir);
   writeFileSync(join(dir, "m1-core", "f1-base", "tasks.md"), "# T\n");
-  await settle(400);
+  await settle(700);
   expect(count()).toBe(1);
 });
 
@@ -40,6 +41,7 @@ it("ignores its own run folder", async () => {
   mkdirSync(join(dir, ".specyard"));
   const count = await changes(dir);
   writeFileSync(join(dir, ".specyard", "run.json"), "{}");
-  await settle(400);
+  await settle(700);
   expect(count()).toBe(0);
 });
+

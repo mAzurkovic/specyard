@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build --config ui/vite.config.ts",
+    "prepack": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "coverage": "vitest run --coverage",

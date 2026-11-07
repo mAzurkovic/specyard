@@ -1,8 +1,8 @@
-import { diffLines } from "diff";
 import { useEffect, useState } from "preact/hooks";
 import type { ProjectModel } from "../../../src/model.js";
 import type { StaleDetails } from "../../../src/staleApi.js";
 import { markNotAffected, staleDetails } from "../api.js";
+import { diffRows } from "../diffRows.js";
 import { staleHref } from "../route.js";
 
 type Load = { state: "loading" } | { state: "not-stale" } | { state: "ok"; details: StaleDetails };
@@ -10,12 +10,19 @@ type Load = { state: "loading" } | { state: "not-stale" } | { state: "ok"; detai
 export function StalePage({ model, file }: { model: ProjectModel; file: string }) {
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [error, setError] = useState<string | null>(null);
-  // The model's version changes on every rebuild, so a fixed file reloads its details when it is no longer stale.
-  const isStale = model.stale.some((s) => s.file === file);
+  // Reload whenever this file's stale reasons change (a source edited again, a parent resolved), and drop a
+  // response that arrives after a newer request.
+  const reasons = JSON.stringify(model.stale.find((s) => s.file === file)?.reasons ?? null);
   useEffect(() => {
-    if (!isStale) return setLoad({ state: "not-stale" });
-    void staleDetails(file).then((details) => setLoad(details ? { state: "ok", details } : { state: "not-stale" }));
-  }, [file, isStale]);
+    if (reasons === "null") return setLoad({ state: "not-stale" });
+    let current = true;
+    void staleDetails(file).then((details) => {
+      if (current) setLoad(details ? { state: "ok", details } : { state: "not-stale" });
+    });
+    return () => {
+      current = false;
+    };
+  }, [file, reasons]);
 
   const mark = async () => {
     const res = await markNotAffected(file);
@@ -65,12 +72,7 @@ export function StalePage({ model, file }: { model: ProjectModel; file: string }
                 </div>
               ))
             )}
-            <div class="row" style={{ marginTop: "10px" }}>
-              <button class="btn" onClick={() => void mark()}>
-                Mark as not affected
-              </button>
-              <span class="muted">Writes the current source hashes into this file; nothing else changes.</span>
-            </div>
+            <MarkAction details={load.details} onMark={() => void mark()} />
             {error && <p class="error">{error}</p>}
           </div>
         </>
@@ -79,19 +81,40 @@ export function StalePage({ model, file }: { model: ProjectModel; file: string }
   );
 }
 
+/** A file stale only through another file has nothing to rewrite; that file is resolved first. */
+function MarkAction({ details, onMark }: { details: StaleDetails; onMark: () => void }) {
+  const through = details.reasons.every((r) => r.via) ? details.reasons[0]?.source : undefined;
+  if (through !== undefined) {
+    return (
+      <p class="muted" style={{ marginTop: "10px" }}>
+        This file changes when its source does. <a href={staleHref(through)}>Resolve {through} first</a>
+      </p>
+    );
+  }
+  return (
+    <div class="row" style={{ marginTop: "10px" }}>
+      <button class="btn" onClick={onMark}>
+        Mark as not affected
+      </button>
+      <span class="muted">Writes the current source hashes into this file; nothing else changes.</span>
+    </div>
+  );
+}
+
 function Diff({ before, after }: { before: string; after: string }) {
+  const MARK = { same: " ", add: "+", del: "-" } as const;
   return (
     <div class="diff">
-      {diffLines(before, after).flatMap((part, i) =>
-        part.value
-          .replace(/\n$/, "")
-          .split("\n")
-          .map((line, j) => (
-            <div key={`${i}-${j}`} class={part.added ? "a" : part.removed ? "r" : undefined} data-diff={part.added ? "add" : part.removed ? "del" : "same"}>
-              {part.added ? "+ " : part.removed ? "- " : "  "}
-              {line}
-            </div>
-          )),
+      {diffRows(before, after).map((row, i) =>
+        row.kind === "header" ? (
+          <div key={i} class="h">
+            {row.text}
+          </div>
+        ) : (
+          <div key={i} class={row.kind === "add" ? "a" : row.kind === "del" ? "r" : undefined} data-diff={row.kind}>
+            {`${MARK[row.kind]} ${row.text}`}
+          </div>
+        ),
       )}
     </div>
   );

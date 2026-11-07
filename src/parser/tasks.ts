@@ -15,8 +15,8 @@ export type ParentEntry = {
 const PARENT = /^## (\d+)\. (.+?)((?: \[[^\]]*\])*)\s*$/;
 const TAG = /^(serial|parallel)(?:, needs (\d+(?:\.\d+)?(?:(?:, | and )\d+(?:\.\d+)?)*))?$/;
 const FLAGS = new Set(["approval", "manual"]);
-const CHECKBOX = /^- \[( |x)\] /;
-const TASK = /^- \[( |x)\] (\d+\.\d+) (.+)$/;
+const CHECKBOX = /^- \[( |x|X)\] /;
+const TASK = /^- \[( |x|X)\] (\d+\.\d+) (.+)$/;
 
 export function parseTasks(text: string): Parsed<ParentEntry[]> {
   const parents: ParentEntry[] = [];
@@ -51,7 +51,7 @@ export function parseTasks(text: string): Parsed<ParentEntry[]> {
       const task = TASK.exec(raw);
       if (!task) return { ok: false, line, expected: "a task like `- [ ] 1.1 <text>`" };
       if (!current) return { ok: false, line, expected: "a task under a heading like `## 1. <title> [serial]`" };
-      current.tasks.push({ id: task[2]!, text: task[3]!, done: task[1] === "x", line });
+      current.tasks.push({ id: task[2]!, text: task[3]!, done: task[1] !== " ", line });
     }
   }
   return { ok: true, value: parents, warnings: [] };

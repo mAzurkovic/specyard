@@ -38,20 +38,39 @@ export async function readMtimes(projectDir: string, paths: Iterable<string>): P
   return times;
 }
 
-/** Every file under the project's `context/` and `mocks/` folders, sorted by path. */
+/** Hash of each context file by path, kept while its size and mtime stay the same. Known limit: a rewrite within the same millisecond at the same size keeps the old hash until the next change. */
+const hashCache = new Map<string, { size: number; mtime: number; hash: string }>();
+
+/** Every file under the project's `context/` and `mocks/` folders, sorted by path; dot files are left out. */
 export async function readContextFiles(projectDir: string): Promise<ContextFile[]> {
   const found = await Promise.all(
     CONTEXT_DIRS.map(async (dir) => {
-      const entries = await readdir(join(projectDir, dir), { recursive: true, withFileTypes: true }).catch(missingAsUndefined);
-      return (entries ?? []).filter((e) => e.isFile()).map((e) => join(e.parentPath, e.name));
+      try {
+        const entries = await readdir(join(projectDir, dir), { recursive: true, withFileTypes: true });
+        return entries.filter((e) => e.isFile() && !e.name.startsWith(".")).map((e) => join(e.parentPath, e.name));
+      } catch (error) {
+        // Missing is normal; any other error (a plain file named mocks, no permission) must not hide the project.
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") console.error(`specyard: cannot list ${dir}/: ${(error as Error).message}`);
+        return [];
+      }
     }),
   );
   const files: ContextFile[] = [];
   await Promise.all(
     found.flat().map(async (file) => {
       // A file removed since the listing is simply not there any more.
-      const [info, bytes] = await Promise.all([stat(file).catch(missingAsUndefined), readFile(file).catch(missingAsUndefined)]);
-      if (info && bytes) files.push({ path: relative(projectDir, file), size: info.size, mtime: Math.round(info.mtimeMs), hash: hashBytes(bytes) });
+      const info = await stat(file).catch(missingAsUndefined);
+      if (!info) return;
+      const mtime = Math.round(info.mtimeMs);
+      const cached = hashCache.get(file);
+      let hash = cached && cached.size === info.size && cached.mtime === mtime ? cached.hash : undefined;
+      if (hash === undefined) {
+        const bytes = await readFile(file).catch(missingAsUndefined);
+        if (!bytes) return;
+        hash = hashBytes(bytes);
+        hashCache.set(file, { size: info.size, mtime, hash });
+      }
+      files.push({ path: relative(projectDir, file), size: info.size, mtime, hash });
     }),
   );
   return files.sort((a, b) => a.path.localeCompare(b.path));

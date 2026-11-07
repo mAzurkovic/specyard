@@ -58,6 +58,17 @@ describe("checkSkills", () => {
     expect(checkSkills(home).find((r) => r.name === "pr")).toMatchObject({ status: "warn" });
   });
 
+  it.each([['"1.2.0"'], ["'1.2.0'"]])("reads a quoted version %s", (version) => {
+    const result = checkSkills(homeWith({ ...allAt("1.0.0"), pr: version })).find((r) => r.name === "pr");
+    expect(result).toMatchObject({ status: "ok", detail: "1.2.0" });
+  });
+
+  it("reads the version from a file with CRLF line endings", () => {
+    const home = homeWith(allAt("1.0.0"));
+    writeFileSync(join(home, ".claude", "skills", "pr", "SKILL.md"), "---\r\nname: pr\r\nversion: 1.3.0\r\n---\r\n# pr\r\n");
+    expect(checkSkills(home).find((r) => r.name === "pr")).toMatchObject({ status: "ok", detail: "1.3.0" });
+  });
+
   it("warns on a skill with no version", () => {
     const result = checkSkills(homeWith({ ...allAt("1.0.0"), verify: null })).find((r) => r.name === "verify");
     expect(result).toMatchObject({ status: "warn" });

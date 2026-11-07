@@ -48,6 +48,10 @@ describe("parseProgress", () => {
     expect(result.value.rejectedFindings).toEqual(['review #5 "use a dataclass": repo uses TypedDict.', 'review #6 "rename": style only.']);
   });
 
+  it("does not throw on a line named like an object property", () => {
+    expect(parseProgress("toString\n- x\nconstructor\n").ok).toBe(true);
+  });
+
   it("reads an empty file as no progress", () => {
     expect(parseProgress("")).toEqual({ ok: true, value: { round: 0, tasks: [], changedTests: [], rejectedFindings: [] }, warnings: [] });
   });

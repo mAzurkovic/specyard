@@ -1,5 +1,5 @@
 import type { Issue } from "../../src/model.js";
-import { sortIssues } from "./issues.js";
+import { issueLocation, sortIssues } from "./issues.js";
 
 /** Error count for one feature; nothing when it has no errors. */
 export function ErrorBadge({ issues }: { issues: Issue[] | undefined }) {
@@ -25,9 +25,7 @@ export function IssuesPanel({ issues }: { issues: Issue[] }) {
                 <span class={`badge ${i.kind === "error" ? "bad" : "stale"}`}>{i.kind}</span>
               </td>
               <td>
-                <code>
-                  {i.file}:{i.line}
-                </code>
+                <code>{issueLocation(i)}</code>
               </td>
               <td>{i.message}</td>
             </tr>
