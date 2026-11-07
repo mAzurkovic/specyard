@@ -1,0 +1,31 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>1. Install and start</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>1. Install and start</h1><p>One command installs Specyard. Run <code>specyard</code> in a repo: it checks the workflow skills and Claude Code, finds <code>specs/&lt;project&gt;/</code>, starts the local UI and opens it. It keeps watching <code>specs/</code> for changes. It needs no config.</p><div class="stories">US1, US2, US3, US9</div></div>
+<div style="max-width:1240px;margin:0 auto 24px;padding:0 16px">
+<div class="term"><span class="d">$</span> npm install -g specyard
+<span class="d">added 1 package in 3s</span>
+
+<span class="d">~/workplace/ledger $</span> specyard
+<span class="p">specyard 0.1.0</span>
+
+<span class="c">✓</span> Claude Code 2.1.314, logged in
+<span class="c">✓</span> skills in ~/.claude/skills
+    to-brd  to-design  to-milestones  to-tasks  implement-feature  verify  expert-review  pr
+<span class="y">!</span> verify is older than the version Specyard expects (no Rerun section).
+    Update: <span class="b">specyard skills update</span>   Skip: <span class="b">specyard --no-skill-check</span>
+<span class="c">✓</span> specs/ledger/
+    requirements.md  design.md  milestones.md
+    3 milestones, 8 features, 31 tasks
+<span class="y">!</span> 1 stale: m3-statements/f1-monthly-statement/tasks.md is older than design.md
+
+<span class="c">→</span> UI at <span class="b">http://localhost:4317</span>  (opened in your browser)
+<span class="d">  Watching specs/ for changes. Runs continue if you close the browser. Ctrl-C stops the UI and asks about running runs.</span>
+</div>
+<div class="panel" style="margin-top:12px"><h3>Other commands</h3>
+<table>
+<tr><td><code>specyard skills install</code></td><td class="muted">Install or update the workflow skills in <code>~/.claude/skills</code> (for an Adopter who does not have them).</td></tr>
+<tr><td><code>specyard --path specs/ledger</code></td><td class="muted">Use this spec folder when the repo has more than one project.</td></tr>
+<tr><td><code>specyard runs</code></td><td class="muted">List running and recent runs in the terminal.</td></tr>
+</table></div>
+</div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="02-detect-no-milestones.html">2. No milestones yet</a></div>
+</body></html>

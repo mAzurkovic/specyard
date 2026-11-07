@@ -1,0 +1,56 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>7. Inbox</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>7. Inbox: a batch of questions</h1><p>Everything that waits for you, from every run: question batches, approvals, BLOCKED verdicts, "Stop and ask" blocks, stale specs and PRs ready to merge. A skill step asks all its independent questions as one batch. The questions that depend on those answers come in the next batch. Each question shows the recommendation and why. Submit resumes the paused run.</p><div class="stories">US18, US19, US20, US21, US22</div></div>
+<div class="app">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span><span class="chip stale">⚠ 1 stale</span><span class="chip run">⏵ 1 running</span><a class="chip ask" href="07-inbox-batch.html">● 5 need you</a></header>
+<nav class="side">
+<h4>Views</h4>
+<a href="03-project-graph.html">Graph</a>
+<a href="04-project-list.html">List</a>
+<a class="on" href="07-inbox-batch.html">Inbox<span class="count">5</span></a>
+<h4>Filter</h4>
+<a href="#">All<span class="count">5</span></a>
+<a href="#">Questions<span class="count">1</span></a>
+<a href="#">Approvals<span class="count">1</span></a>
+<a href="#">Stops<span class="count">1</span></a>
+<a href="#">Stale<span class="count">1</span></a>
+<a href="#">Ready to merge<span class="count">1</span></a>
+</nav>
+<main style="padding:0;display:grid;grid-template-columns:290px 1fr">
+<div style="background:var(--panel);border-right:1px solid var(--line)">
+<a class="ibox-item on" href="#"><span class="badge ask">4 questions</span> M2·F3 API auth<small>/to-design · batch 1 of 2 · 12m ago</small></a>
+<a class="ibox-item" href="#"><span class="badge ask">approval</span> M2·F1 Create account<small>/verify: case 15 sends a real email (welcome mail) · 1m ago</small></a>
+<a class="ibox-item" href="#"><span class="badge bad">stop</span> M1·F2 Idempotent writes<small>follow-up run: task 2.3 failed 3 attempts · 1h ago</small></a>
+<a class="ibox-item" href="08-stale-spec.html"><span class="badge stale">stale</span> M3·F1 Monthly statement<small>design.md changed after tasks.md · 3h ago</small></a>
+<a class="ibox-item" href="09-evidence.html"><span class="badge accent">merge</span> M1·F3 CI/CD<small>PR #19 · all evidence green · 2h ago</small></a>
+</div>
+<div style="padding:16px 20px;overflow:auto">
+<div class="row"><h2>M2·F3 API auth</h2><span class="badge ask">/to-design · paused</span></div>
+<div class="sub-h">Batch 1 of 2: 4 independent questions. Batch 2 (about 2 questions) depends on your answers to Q1 and Q3.</div>
+
+<div class="q"><div class="qt">Q1. How do API clients authenticate?</div>
+<label class="rec"><input type="radio" name="q1" checked> <span><b>API key per client</b> <span class="badge accent">Recommended</span><br><span class="muted">Sent as a bearer token. Simple, and enough for server-to-server use.</span></span></label>
+<label><input type="radio" name="q1"> <span><b>OAuth 2.0 client credentials</b><br><span class="muted">Short-lived tokens, but needs a token endpoint and a client registry.</span></span></label>
+<label><input type="radio" name="q1"> <span><b>mTLS</b><br><span class="muted">Strong, but every client needs a certificate.</span></span></label>
+<div class="why">Why: requirements.md says that all callers are internal services. There are no end users.</div></div>
+
+<div class="q"><div class="qt">Q2. Where are the keys stored?</div>
+<label class="rec"><input type="radio" name="q2" checked> <span><b>SHA-256 hash in the accounts database</b> <span class="badge accent">Recommended</span></span></label>
+<label><input type="radio" name="q2"> <span><b>One AWS Secrets Manager secret per key</b></span></label>
+<div class="why">Why: the request path then needs no extra network call. A database leak shows hashes, not keys.</div></div>
+
+<div class="q"><div class="qt">Q3. What can a key access?</div>
+<label class="rec"><input type="radio" name="q3" checked> <span><b>Only the accounts that its client created</b> <span class="badge accent">Recommended</span></span></label>
+<label><input type="radio" name="q3"> <span><b>All accounts</b></span></label>
+<div class="why">Why: FR12 says that a client sees only its own accounts.</div></div>
+
+<div class="q"><div class="qt">Q4. How does key rotation work?</div>
+<label class="rec"><input type="radio" name="q4" checked> <span><b>Two active keys per client during rotation</b> <span class="badge accent">Recommended</span></span></label>
+<label><input type="radio" name="q4"> <span><b>A new key replaces the old key at once</b></span></label>
+<textarea placeholder="Other, or add a note for the skill…"></textarea>
+<div class="why">Why: clients can rotate with no downtime.</div></div>
+
+<div class="row" style="position:sticky;bottom:0;background:var(--bg);padding:10px 0"><button class="btn">Accept all 4 recommendations</button><span class="spacer"></span><span class="muted">4 of 4 answered</span><button class="btn primary">Submit and resume /to-design</button></div>
+</div>
+</main></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="08-stale-spec.html">8. Stale spec</a></div>
+</body></html>

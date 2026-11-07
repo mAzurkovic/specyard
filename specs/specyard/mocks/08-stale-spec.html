@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>8. Stale spec</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>8. Stale spec: design changed after tasks</h1><p>Each generated file records hashes of the files it was made from. <code>design.md</code> changed after M3·F1's <code>tasks.md</code> was written, so Specyard flags that feature and everything built from it. The page shows the change and the features it affects. You pick which ones to re-run.</p><div class="stories">US23, US24</div></div>
+<div class="app">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span><span class="chip stale">⚠ 1 stale</span><span class="chip run">⏵ 1 running</span><a class="chip ask" href="07-inbox-batch.html">● 5 need you</a></header>
+<nav class="side">
+<h4>Views</h4>
+<a href="03-project-graph.html">Graph</a>
+<a href="04-project-list.html">List</a>
+<a href="07-inbox-batch.html">Inbox<span class="count">5</span></a>
+<h4>M3 Statements</h4>
+<a class="sub on" href="08-stale-spec.html"><span class="dot stale"></span>F1 Monthly statement</a>
+<a class="sub" href="05-feature-drilldown.html"><span class="dot"></span>F2 PDF export</a>
+</nav>
+<main>
+<div class="crumb">ledger › M3 Statements › F1 Monthly statement</div>
+<div class="row"><h2>F1 Monthly statement</h2><span class="badge stale">⚠ stale tasks</span></div>
+<div class="panel" style="background:var(--stale-soft);border-color:#f3d98b;margin-top:10px">
+<b><code>specs/ledger/design.md</code> changed 3 hours ago.</b> <code>m3-statements/f1-monthly-statement/tasks.md</code> was made from the version before. <span class="muted">Hash in tasks.md: <code>a41f09c2e7b1</code> · now: <code>9c03de51aa48</code></span></div>
+<div class="panel"><h3>What changed in design.md</h3>
+<div class="diff">
+<div class="h">@@ ## Statements @@</div>
+<div class="r">- Statement period: calendar month, server time zone.</div>
+<div class="a">+ Statement period: calendar month in the account's time zone (`accounts.tz`, IANA name).</div>
+<div class="a">+ A transfer at 23:30 on the last day in the account's zone is in that month.</div>
+<div class="h">@@ ## Data @@</div>
+<div class="a">+ accounts.tz TEXT NOT NULL DEFAULT 'UTC'</div>
+</div>
+<div class="muted" style="margin-top:8px;font-size:12px">Changed by you in your editor (not by a skill). Uncommitted.</div></div>
+<div class="panel"><h3>Affected</h3>
+<table>
+<tr><th></th><th>File</th><th>Why</th><th>Re-run</th></tr>
+<tr><td><input type="checkbox" checked></td><td><code>m3-statements/f1-monthly-statement/tasks.md</code></td><td class="muted">Made from the old Statements section. Not started.</td><td>/to-tasks</td></tr>
+<tr><td><input type="checkbox" checked></td><td><code>m2-accounts-api/f1-create-account/</code> <span class="badge run">running</span></td><td class="muted">New column <code>accounts.tz</code>. The running run uses the old design.</td><td class="muted">stop run, then /to-tasks, or follow-up</td></tr>
+<tr><td><input type="checkbox"></td><td><code>milestones.md</code> M3 entry</td><td class="muted">Exit criteria name "server time zone".</td><td>/to-milestones (M3 only)</td></tr>
+<tr><td><input type="checkbox" disabled></td><td><code>m3-statements/f2-pdf-export/</code></td><td class="muted">No design or tasks yet. Not affected.</td><td class="muted">–</td></tr>
+</table>
+<div class="row" style="margin-top:12px"><button class="btn primary">Re-run /to-tasks for 1 feature</button><button class="btn">Add follow-up to M2·F1</button><span class="spacer"></span><button class="btn">Mark as not affected</button></div>
+<div class="muted" style="font-size:12px;margin-top:8px">"Mark as not affected" writes the new hash into tasks.md, so the flag clears and the file stays the same.</div>
+</div>
+</main></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="09-evidence.html">9. Evidence</a></div>
+</body></html>

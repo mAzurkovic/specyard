@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>9. Evidence</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>9. Evidence: decide to merge</h1><p>One page for each feature, built from the last run's reports, <code>progress.md</code> and the PR. The open items come first, because they are what is not proven. Then the done gate, coverage, the verify table, the review findings, the proof and the PR.</p><div class="stories">US25, US26</div></div>
+<div class="app">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span><span class="chip stale">⚠ 1 stale</span><span class="chip run">⏵ 1 running</span><a class="chip ask" href="07-inbox-batch.html">● 5 need you</a></header>
+<nav class="side">
+<h4>Views</h4>
+<a href="03-project-graph.html">Graph</a>
+<a href="04-project-list.html">List</a>
+<a href="07-inbox-batch.html">Inbox<span class="count">5</span></a>
+<h4>M1 Ledger core</h4>
+<a class="sub" href="#"><span class="dot ok"></span>F1 Double-entry postings</a>
+<a class="sub" href="#"><span class="dot ok"></span>F2 Idempotent writes</a>
+<a class="sub on" href="09-evidence.html"><span class="dot" style="background:#5c7cfa"></span>F3 CI/CD</a>
+</nav>
+<main>
+<div class="crumb">ledger › M1 Ledger core › F3 CI/CD › Evidence</div>
+<div class="row"><h2>F3 CI/CD</h2><span class="badge accent">PR #19 open</span><span class="spacer"></span><button class="btn">Open PR on GitHub</button><button class="btn primary">Merge PR #19…</button></div>
+<div class="tabs" style="margin-top:10px"><a href="#">Requirements</a><a href="#">Design</a><a href="#">Tasks</a><a href="06-run-live.html">Run</a><a class="on" href="#">Evidence</a></div>
+<div class="tiles">
+<div class="tile"><div class="k">Done gate</div><div class="v ok">PASS</div></div>
+<div class="tile"><div class="k">Coverage, changed code</div><div class="v">97%</div></div>
+<div class="tile"><div class="k">Verify</div><div class="v ok">8 / 8</div></div>
+<div class="tile"><div class="k">Review</div><div class="v ok">0 must fix</div></div>
+<div class="tile"><div class="k">Rounds</div><div class="v">2 of 3</div></div>
+</div>
+<div class="panel" style="border-color:#f3c9a8;background:var(--ask-soft)"><h3>Open items: 3</h3>
+<table>
+<tr><td><span class="badge ask">not verified</span></td><td>Deploy to production on a version tag</td><td class="muted">[approval]: needs a real release. You chose to skip it on Nov 5. Listed in the PR.</td></tr>
+<tr><td><span class="badge">follow-up</span></td><td>[test] No test for a workflow file with a syntax error</td><td class="muted">review r1, #3 · Should fix</td></tr>
+<tr><td><span class="badge">follow-up</span></td><td>[lean] Two jobs repeat the same cache step</td><td class="muted">review r1, #4 · Should fix · -9 lines</td></tr>
+</table>
+<div class="row" style="margin-top:8px"><button class="btn sm">Make follow-ups into fix tasks</button></div></div>
+<div class="panel" style="padding:0"><div style="padding:12px 14px 0"><h3>Verify · rerun, suite reused · local (act + LocalStack)</h3></div><table>
+<tr><th>#</th><th>Case</th><th>Expected</th><th>Actual</th><th>Result</th></tr>
+<tr><td>1</td><td>Push to a branch</td><td>lint, types, tests run; status reported</td><td>3 jobs, all green, status set</td><td><span class="badge ok">PASS</span></td></tr>
+<tr><td>2</td><td>Failing test on a PR</td><td>check fails, merge blocked</td><td>check red, merge blocked</td><td><span class="badge ok">PASS</span></td></tr>
+<tr><td>3</td><td>Merge to main</td><td>deploy to the dev stack, smoke test 200</td><td>deployed, GET /health 200</td><td><span class="badge ok">PASS</span></td></tr>
+<tr><td>4</td><td>Missing AWS role secret</td><td>job fails with the secret name, no deploy</td><td>fails: "AWS_DEPLOY_ROLE not set"</td><td><span class="badge ok">PASS</span></td></tr>
+<tr><td colspan="5" class="muted">4 more cases, all PASS · <a href="#">show all</a> · suite: <code>m1-ledger-core/f3-ci-cd/verify/</code></td></tr>
+</table></div>
+<div class="row" style="align-items:stretch">
+<div class="panel" style="flex:1"><h3>Review findings</h3>
+<table style="font-size:12px">
+<tr><td>1</td><td>[risk] Deploy job had write access to all repos</td><td><span class="badge ok">fixed r1</span></td></tr>
+<tr><td>2</td><td>[bug] Cache key ignored package-lock.json</td><td><span class="badge ok">fixed r1</span></td></tr>
+<tr><td>3</td><td>[test] No syntax-error case</td><td><span class="badge">follow-up</span></td></tr>
+<tr><td>4</td><td>[lean] Repeated cache step</td><td><span class="badge">follow-up</span></td></tr>
+<tr><td>5</td><td>[idiom] Use a reusable workflow</td><td><span class="badge">rejected</span> <span class="muted">repo has 1 workflow</span></td></tr>
+</table></div>
+<div class="panel" style="flex:1"><h3>Proof</h3>
+<div class="term" style="font-size:11.5px;padding:10px 12px"><span class="d">$</span> act push -W .github/workflows/ci.yml
+<span class="c">[ci/lint]</span>  ✅ Success
+<span class="c">[ci/test]</span>  ✅ Success · 212 passed
+<span class="c">[ci/deploy-dev]</span> ✅ Success · GET /health → 200</div>
+<div class="muted" style="font-size:12px;margin-top:6px">From the Ship step, the same as in the PR description.</div></div>
+</div>
+</main></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a></div>
+</body></html>

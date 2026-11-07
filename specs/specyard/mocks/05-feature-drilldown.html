@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>5. Feature page</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>5. Feature page: review the tasks</h1><p>One tab per spec file, plus Run and Evidence. <code>/to-tasks</code> just wrote a new <code>tasks.md</code>. The page shows the changes since the last version. Approve writes <code>Status: approved</code> into the file. Re-run sends your comment to the skill. Implement stays disabled until the tasks are approved and the dependencies are merged.</p><div class="stories">US10, US11, US12, US13, US14</div></div>
+<div class="app with-right">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span><span class="chip stale">⚠ 1 stale</span><span class="chip run">⏵ 1 running</span><a class="chip ask" href="07-inbox-batch.html">● 5 need you</a></header>
+<nav class="side">
+<h4>Views</h4>
+<a href="03-project-graph.html">Graph</a>
+<a href="04-project-list.html">List</a>
+<a href="07-inbox-batch.html">Inbox<span class="count">5</span></a>
+<h4>M2 Accounts API</h4>
+<a class="sub" href="06-run-live.html"><span class="dot run"></span>F1 Create account</a>
+<a class="sub on" href="05-feature-drilldown.html"><span class="dot"></span>F2 Transfers</a>
+<a class="sub" href="07-inbox-batch.html"><span class="dot ask"></span>F3 API auth</a>
+</nav>
+<main>
+<div class="crumb">ledger › M2 Accounts API › <code>specs/ledger/m2-accounts-api/f2-transfers/</code></div>
+<div class="row"><h2>F2 Transfers</h2><span class="badge accent">tasks in review</span></div>
+<div class="steps"><div class="done">✓ Requirements <span class="muted">(project)</span></div><div class="done">✓ Design</div><div class="now">● Tasks: review</div><div>Implement</div><div>PR</div></div>
+<div class="tabs"><a href="#">Requirements</a><a href="#">Design</a><a class="on" href="#">Tasks <span class="badge accent">new</span></a><a href="06-run-live.html">Run</a><a href="09-evidence.html">Evidence</a></div>
+<div class="row" style="margin-bottom:10px"><div class="seg"><a href="#">Rendered</a><a class="on" href="#">Changes since v1</a></div><span class="muted">v2, written by /to-tasks 6 min ago, from your comment "split the ledger write from the API handler"</span></div>
+<div class="diff">
+<div class="h">@@ tasks.md: parent 2 @@</div>
+<div>## 2. Transfer endpoint [serial, needs 1]</div>
+<div class="r">- [ ] 2.1 POST /transfers: validate, post both entries, return 201</div>
+<div class="a">+ [ ] 2.1 POST /transfers: validate the body and accounts, return 201 or 4xx</div>
+<div class="a">+ [ ] 2.2 Post the debit and credit entries in one transaction</div>
+<div class="a">+ [ ] 2.3 Same Idempotency-Key and body: return the first result, no new entries</div>
+<div class="r">- [ ] 2.2 Insufficient funds gives 422</div>
+<div class="a">+ [ ] 2.4 Insufficient funds gives 422 and writes nothing</div>
+<div class="h">@@ tasks.md: parent 3 @@</div>
+<div>## 3. Transfer history [parallel]</div>
+<div>  [ ] 3.1 GET /accounts/{id}/transfers, newest first, cursor pages</div>
+</div>
+<div class="panel" style="margin-top:12px"><h3>Summary</h3>
+<div class="muted">3 parents · 9 tasks (was 7) · 2 parents can run in parallel · new dependency: none</div></div>
+</main>
+<aside class="right">
+<h3>Review</h3>
+<button class="btn primary" style="width:100%;justify-content:center;margin-bottom:8px">Approve tasks</button>
+<textarea style="width:100%;font:inherit;padding:7px 8px;border:1px solid var(--line);border-radius:6px;min-height:64px" placeholder="Comment for /to-tasks…"></textarea>
+<button class="btn" style="width:100%;justify-content:center;margin:6px 0 16px">Re-run /to-tasks with comment</button>
+<h3>Implement</h3>
+<button class="btn" disabled style="width:100%;justify-content:center">⏵ Implement</button>
+<ul class="muted" style="padding-left:18px;font-size:12px;margin:6px 0 16px"><li>Approve the tasks first.</li><li>Waits on M2·F1 Create account (verify running).</li></ul>
+<h3>Run a skill</h3>
+<div class="row" style="margin-bottom:16px"><button class="btn sm">/to-design</button><button class="btn sm">/to-tasks</button><button class="btn sm">/expert-review</button></div>
+<h3>Files</h3>
+<table style="font-size:12px">
+<tr><td><span class="dot ok"></span></td><td><code>design.md</code></td><td class="muted">current</td></tr>
+<tr><td><span class="dot ok"></span></td><td><code>tasks.md</code></td><td class="muted">v2, 6m ago</td></tr>
+<tr><td><span class="dot"></span></td><td><code>progress.md</code></td><td class="muted">none yet</td></tr>
+<tr><td><span class="dot"></span></td><td><code>verify/</code></td><td class="muted">none yet</td></tr>
+</table>
+<h3 style="margin-top:16px">Runs</h3>
+<div class="muted" style="font-size:12px">/to-tasks v2 · 3m · 6m ago<br>/to-tasks v1 · 4m · Nov 5<br>/to-design · 11m · 3 questions · Nov 5</div>
+</aside></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="06-run-live.html">6. Live run</a></div>
+</body></html>

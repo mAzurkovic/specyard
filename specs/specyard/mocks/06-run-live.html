@@ -1,0 +1,63 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>6. Live run</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>6. Live run: /implement-feature</h1><p>The Feature loop, live. Rounds and phases at the top, time per phase below them, and every subagent with its type, time and result. The log shows the skill's progress lines as they arrive. The run continues when you close the browser. Stop asks first, and then cleans up the sandboxes and processes.</p><div class="stories">US14, US15, US16, US17</div></div>
+<div class="app with-right">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span><span class="chip stale">⚠ 1 stale</span><span class="chip run">⏵ 1 running</span><a class="chip ask" href="07-inbox-batch.html">● 5 need you</a></header>
+<nav class="side">
+<h4>Views</h4>
+<a href="03-project-graph.html">Graph</a>
+<a href="04-project-list.html">List</a>
+<a href="07-inbox-batch.html">Inbox<span class="count">5</span></a>
+<h4>M2 Accounts API</h4>
+<a class="sub on" href="06-run-live.html"><span class="dot run"></span>F1 Create account</a>
+<a class="sub" href="05-feature-drilldown.html"><span class="dot"></span>F2 Transfers</a>
+<a class="sub" href="07-inbox-batch.html"><span class="dot ask"></span>F3 API auth</a>
+<h4>Runs</h4>
+<a class="sub on" href="#"><span class="dot run"></span>implement · now</a>
+<a class="sub" href="#"><span class="dot ok"></span>to-tasks · Nov 4</a>
+<a class="sub" href="#"><span class="dot ok"></span>to-design · Nov 4</a>
+</nav>
+<main>
+<div class="crumb">ledger › M2 Accounts API › F1 Create account › Run</div>
+<div class="row"><h2>F1 Create account</h2><span class="badge run">⏵ running · 22m</span><span class="spacer"></span><button class="btn danger">■ Stop run</button></div>
+<div class="steps"><div class="done">✓ Build · 4 tasks</div><div class="done">✓ Round 1 · verify FAIL 1 of 14</div><div class="now">● Round 2 · verify</div><div>Round 3</div><div>Ship</div></div>
+<div class="panel"><h3>Time per phase</h3>
+<div class="bar"><div style="flex:7;background:#495057">build 7m</div><div style="flex:1;background:#868e96">gate</div><div style="flex:6;background:#1971c2">verify r1 6m</div><div style="flex:2;background:#7048e8">review 2m</div><div style="flex:2;background:#495057">fix 2m</div><div style="flex:1;background:#868e96"></div><div style="flex:3;background:#4dabf7">verify r2 ⏵</div></div>
+<div class="muted" style="font-size:12px;margin-top:6px">verify r2 reuses the saved suite (14 cases + 1 new case). Round 1 verify wrote it in 6m.</div></div>
+<div class="panel" style="padding:0"><table>
+<tr><th>Subagent</th><th>Skill</th><th>Started</th><th>Time</th><th>Result</th></tr>
+<tr><td>build 1.2 ‖</td><td class="muted">implement-feature</td><td class="muted">19:02</td><td>3m</td><td><span class="badge ok">PASS · 2 attempts</span></td></tr>
+<tr><td>build 1.3 ‖</td><td class="muted">implement-feature</td><td class="muted">19:02</td><td>2m</td><td><span class="badge ok">PASS</span></td></tr>
+<tr><td>verify r1</td><td class="muted">verify</td><td class="muted">19:10</td><td>6m</td><td><span class="badge bad">FAIL 1 of 14</span> <a href="09-evidence.html">report</a></td></tr>
+<tr><td>review r1</td><td class="muted">expert-review</td><td class="muted">19:16</td><td>2m</td><td><span class="badge ok">0 must fix · 2 should fix</span></td></tr>
+<tr><td>verify r2</td><td class="muted">verify</td><td class="muted">19:21</td><td>3m ⏵</td><td><span class="badge run">running · 9 of 15 cases</span></td></tr>
+<tr><td class="muted">review r2</td><td class="muted">expert-review</td><td class="muted">–</td><td class="muted">–</td><td><span class="badge">queued: diff of Fix F1</span></td></tr>
+</table></div>
+<div class="term" style="max-height:220px;overflow:auto"><span class="d">19:01</span> [read] tasks.md: 2 parents, 3 tasks. Continue at 1.1.
+<span class="d">19:04</span> [build 1.1] attempt 1: <span class="c">PASS</span>
+<span class="d">19:05</span> [build 1.2] attempt 1: <span class="r">FAIL</span>: test_rejects_unknown_currency, got 500
+<span class="d">19:06</span> [build 1.2] attempt 2: <span class="c">PASS</span>
+<span class="d">19:09</span> [feature r1] done gate: <span class="c">PASS</span> (coverage 96%)
+<span class="d">19:16</span> [feature r1] verify: <span class="r">FAIL 1 of 14</span> (duplicate external_id → 500, want 409). Add Fix F1.
+<span class="d">19:18</span> [feature r1] review: 2 findings, 0 must fix. Follow-ups: 1, 2.
+<span class="d">19:20</span> [build F1] attempt 1: <span class="c">PASS</span>
+<span class="d">19:21</span> [feature r2] done gate: <span class="c">PASS</span>. verify: rerun, failed cases first (4)…
+<span class="d">19:22</span>   <span class="b">verify</span> 4 <span class="c">PASS</span> 409 {"error":"external_id exists"}
+<span class="d">19:23</span>   <span class="b">verify</span> 1 <span class="c">PASS</span> 201 id=acc_01J…  <span class="d">… 9 of 15</span></div>
+</main>
+<aside class="right">
+<h3>Tasks</h3>
+<table style="font-size:12px;margin-bottom:14px">
+<tr><td><span class="dot ok"></span></td><td>1.1 Account table</td><td class="muted">1</td></tr>
+<tr><td><span class="dot ok"></span></td><td>1.2 POST /accounts</td><td class="muted">2</td></tr>
+<tr><td><span class="dot ok"></span></td><td>1.3 Currency check</td><td class="muted">1</td></tr>
+<tr><td><span class="dot ok"></span></td><td>Fix F1 duplicate → 409</td><td class="muted">1</td></tr>
+</table>
+<h3>Loop limits</h3>
+<div class="muted" style="font-size:12px;margin-bottom:14px">Round 2 of 3 · review round 1 of 2 · verify runs 2 of 3</div>
+<h3>Follow-ups so far</h3>
+<div style="font-size:12px;margin-bottom:14px">1. [test] No test for a currency in lower case<br>2. [lean] <code>AccountRow</code> repeats the <code>Account</code> type</div>
+<h3>Needs you</h3>
+<div style="font-size:12px"><span class="badge ask">approval</span> Verify case 15 sends a real welcome email. Verify runs the other cases first. <a href="07-inbox-batch.html">Answer in Inbox</a></div>
+</aside></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="07-inbox-batch.html">7. Inbox</a></div>
+</body></html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>2. No milestones yet</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>2. Project found, no milestones yet</h1><p>Specyard shows what it found in <code>specs/</code> and the next skill to run. A project needs <code>requirements.md</code> and <code>design.md</code>; when one is missing, the main action is <code>/to-brd</code> or <code>/to-design</code>. Extra files in <code>context/</code> (HLD, LLD, API notes, ADRs) and <code>mocks/</code> are context: Specyard lists them and passes their paths to every skill run. Here the design exists but <code>milestones.md</code> does not, so the main action is <code>/to-milestones</code>. A small design can skip milestones and go to <code>/to-tasks</code>.</p><div class="stories">US3, US4, US27, US28</div></div>
+<div class="app">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span></header>
+<nav class="side">
+<h4>Project</h4>
+<div class="item"><span class="dot ok"></span>requirements.md</div>
+<div class="item"><span class="dot ok"></span>design.md</div>
+<div class="item muted"><span class="dot"></span>milestones.md<span class="count">missing</span></div>
+<h4>Context</h4>
+<div class="item"><span class="dot ok"></span>context/hld.md</div>
+<div class="item"><span class="dot ok"></span>context/lld-ledger-writes.md</div>
+<div class="item"><span class="dot ok"></span>mocks/<span class="count">9</span></div>
+<a href="#" class="muted">+ Add context file</a>
+</nav>
+<main>
+<h2>ledger</h2><div class="sub-h">Found in <code>specs/ledger/</code></div>
+<div class="steps"><div class="done">✓ Requirements</div><div class="done">✓ Design</div><div class="now">● Milestones</div><div>Tasks</div><div>Implement</div></div>
+<div class="panel" style="padding:22px 24px;max-width:720px">
+<h3 style="font-size:15px">Split the design into milestones</h3>
+<p class="muted" style="margin:0 0 12px">The design has 4 components and 27 functional requirements. That is large for one task list. <code>/to-milestones</code> writes <code>milestones.md</code>: milestones in build order, each with features you can build, test and review on their own.</p>
+<div class="row"><button class="btn primary">Run /to-milestones</button><button class="btn">Skip: one task list with /to-tasks</button></div>
+<p class="muted" style="margin:14px 0 0;font-size:12px">The skill can ask questions. They go to the <a href="07-inbox-batch.html">Inbox</a> as one batch.</p>
+</div>
+<div class="panel" style="max-width:720px"><h3>Found files</h3>
+<table>
+<tr class="group"><td colspan="4">Required</td></tr>
+<tr><td><span class="dot ok"></span></td><td><code>requirements.md</code></td><td class="muted">27 FR, 6 NFR, 2 open questions</td><td class="muted">changed 2 days ago</td></tr>
+<tr><td><span class="dot ok"></span></td><td><code>design.md</code></td><td class="muted">4 components, 3 data entities</td><td class="muted">changed yesterday</td></tr>
+<tr class="group"><td colspan="4">Plan <span class="muted" style="font-weight:400">· made by the skills</span></td></tr>
+<tr><td><span class="dot"></span></td><td><code>milestones.md</code></td><td class="muted">not found</td><td></td></tr>
+<tr class="group"><td colspan="4">Context <span class="muted" style="font-weight:400">· optional · passed to every skill run</span></td></tr>
+<tr><td><span class="dot ok"></span></td><td><code>context/hld.md</code></td><td class="muted">high-level design: services and data flow</td><td class="muted">changed 5 days ago</td></tr>
+<tr><td><span class="dot ok"></span></td><td><code>context/lld-ledger-writes.md</code></td><td class="muted">low-level design: write path and locking</td><td class="muted">changed 3 days ago</td></tr>
+<tr><td><span class="dot ok"></span></td><td><code>mocks/</code></td><td class="muted">9 HTML mocks</td><td class="muted">changed 2 days ago</td></tr>
+</table>
+<div class="row" style="margin-top:10px"><button class="btn sm">+ Add context file</button><span class="muted" style="font-size:12px">Copies or links a file into <code>context/</code>. Any Markdown, PDF or image.</span></div></div>
+</main></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="03-project-graph.html">3. Project graph</a></div>
+</body></html>

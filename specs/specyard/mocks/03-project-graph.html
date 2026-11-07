@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>3. Project graph</title><link rel="stylesheet" href="styles.css"></head><body>
+<div class="caption"><h1>3. Project graph</h1><p>Home view. One lane per milestone, one node per feature. Edges come from the dependencies in <code>milestones.md</code> and <code>tasks.md</code>. The colour and the label show the stage, derived from the files. The outlined path is the critical path. Click a node to select it, double-click to open it (mock 5).</p><div class="stories">US5, US7, US8, US23</div>
+<div class="switcher"><b style="font-size:12px;color:var(--page-ink)">Style:</b>
+<button data-s="blueprint-light" class="on">Blueprint light</button><button data-s="">Light</button><button data-s="dark">Dark</button><button data-s="blueprint">Blueprint</button><button data-s="mono">Mono</button><button data-s="paper">Paper</button>
+<span class="note" id="note"></span></div></div>
+<div class="app">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span><span class="chip stale">⚠ 1 stale</span><span class="chip run">⏵ 1 running</span><a class="chip ask" href="07-inbox-batch.html">● 5 need you</a></header>
+<nav class="side">
+<h4>Project</h4>
+<div class="item"><span class="dot ok"></span>requirements.md</div>
+<div class="item"><span class="dot ok"></span>design.md</div>
+<div class="item"><span class="dot ok"></span>milestones.md</div>
+<h4>Context</h4>
+<div class="item"><span class="dot ok"></span>context/hld.md</div>
+<div class="item"><span class="dot ok"></span>context/lld-ledger-writes.md</div>
+<div class="item"><span class="dot ok"></span>mocks/<span class="count">9</span></div>
+<h4>Views</h4>
+<a class="on" href="03-project-graph.html">Graph</a>
+<a href="04-project-list.html">List</a>
+<a href="07-inbox-batch.html">Inbox<span class="count">5</span></a>
+<h4>Milestones</h4>
+<a href="04-project-list.html">M1 Ledger core<span class="count">2/3</span></a>
+<a href="04-project-list.html">M2 Accounts API<span class="count">0/3</span></a>
+<a href="04-project-list.html">M3 Statements<span class="count">0/2</span></a>
+</nav>
+<main>
+<div class="row" style="margin-bottom:10px"><h2>ledger</h2><span class="muted">3 milestones · 8 features · 2 done</span><span class="spacer"></span><div class="seg"><a class="on" href="03-project-graph.html">Graph</a><a href="04-project-list.html">List</a></div></div>
+<div class="graph">
+<div class="lane" style="left:16px;width:300px"><span class="lh">M1 Ledger core</span></div>
+<div class="lane" style="left:336px;width:300px"><span class="lh">M2 Accounts API</span></div>
+<div class="lane" style="left:656px;width:300px"><span class="lh">M3 Statements</span></div>
+<svg width="100%" height="100%"><defs>
+<marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrow" d="M0 0L8 4L0 8z"/></marker>
+<marker id="arc" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path class="arrow crit" d="M0 0L8 4L0 8z"/></marker></defs>
+<g class="edges" marker-end="url(#ar)">
+<path d="M240 73 C300 73,300 73,358 73"/>
+<path d="M240 73 C300 73,300 193,358 193"/>
+<path d="M240 193 C300 193,300 193,358 193"/>
+<path d="M240 313 C300 313,300 313,358 313"/>
+<path d="M560 313 C620 313,620 133,678 133"/>
+</g>
+<g class="edges crit" marker-end="url(#arc)">
+<path d="M460 106 L460 158"/>
+<path d="M560 193 C620 193,620 133,678 133"/>
+<path d="M780 166 L780 248"/>
+</g></svg>
+<a class="node ok" style="left:40px;top:40px" href="09-evidence.html"><b>F1 Double-entry postings</b><div class="meta"><span class="badge ok">done</span>PR #14 merged</div></a>
+<a class="node ok" style="left:40px;top:160px" href="09-evidence.html"><b>F2 Idempotent writes</b><div class="meta"><span class="badge ok">done</span>PR #17 merged</div></a>
+<a class="node ok" style="left:40px;top:280px;border-left-color:#5c7cfa" href="09-evidence.html"><b>F3 CI/CD</b><div class="meta"><span class="badge accent">PR open</span>#19 · checks pass</div></a>
+<a class="node run sel crit" style="left:360px;top:40px" href="06-run-live.html"><b>F1 Create account</b><div class="meta"><span class="badge run">⏵ verify r2</span>18m</div></a>
+<a class="node crit" style="left:360px;top:160px" href="05-feature-drilldown.html"><b>F2 Transfers</b><div class="meta"><span class="badge accent">tasks in review</span>waits on F1</div></a>
+<a class="node ask" style="left:360px;top:280px" href="07-inbox-batch.html"><b>F3 API auth</b><div class="meta"><span class="badge ask">● 4 questions</span>/to-design</div></a>
+<a class="node stale crit" style="left:680px;top:100px" href="08-stale-spec.html"><b>F1 Monthly statement</b><div class="meta"><span class="badge stale">⚠ stale tasks</span>design.md changed</div></a>
+<a class="node crit" style="left:680px;top:250px" href="05-feature-drilldown.html"><b>F2 PDF export</b><div class="meta"><span class="badge">needs design</span></div></a>
+</div>
+<div class="legend"><span><span class="dot ok"></span>done</span><span><span class="dot" style="background:#5c7cfa"></span>PR open</span><span><span class="dot run"></span>running</span><span><span class="dot ask"></span>needs you</span><span><span class="dot stale"></span>stale</span><span><span class="dot"></span>not started</span><span style="color:var(--crit, var(--accent))">━ critical path: M2·F1 → F2 → M3·F1 → F2</span></div>
+<div class="row" style="margin-top:12px;align-items:stretch">
+<div class="panel" style="flex:1;margin:0"><h3>Can start now</h3>
+<div class="row" style="margin-bottom:6px"><span class="dot"></span>M3·F2 PDF export<span class="muted">needs design</span><span class="spacer"></span><button class="btn sm">Run /to-design</button></div>
+<div class="row"><span class="dot stale"></span>M3·F1 Monthly statement<span class="muted">re-run tasks</span><span class="spacer"></span><a class="btn sm" href="08-stale-spec.html">Review change</a></div></div>
+<div class="panel" style="flex:1;margin:0"><h3>Selected: M2·F1 Create account</h3>
+<div class="muted" style="margin-bottom:8px">Round 2 of 3 · build ✓ · done gate ✓ · verify running · review queued</div>
+<div class="row"><a class="btn sm primary" href="06-run-live.html">Open run</a><a class="btn sm" href="05-feature-drilldown.html">Open feature</a><span class="muted">Unblocks M2·F2 when merged</span></div></div>
+</div>
+</main></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="04-project-list.html">4. List view</a></div>
+<script>
+const notes = { "": "Light: neutral grey, blue accent. The default.", dark: "Dark: the same layout for long sessions next to a dark editor.", "blueprint-light": "Blueprint light: blue ink on white drawing paper. Monospace, grid, red-line critical path, outlined nodes.", blueprint: "Blueprint: engineering drawing. Monospace, grid paper, yellow critical path.", mono: "Mono: black and white, square corners. Colour only for status.", paper: "Paper: warm off-white, serif headings, softer cards." };
+const pick = s => { document.body.dataset.style = s; document.querySelectorAll(".switcher button").forEach(b => b.classList.toggle("on", b.dataset.s === s)); document.getElementById("note").textContent = notes[s]; };
+document.querySelectorAll(".switcher button").forEach(b => b.onclick = () => pick(b.dataset.s));
+pick(new URLSearchParams(location.search).get("style") ?? "blueprint-light");
+</script>
+</body></html>

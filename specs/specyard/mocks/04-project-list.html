@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>4. List view</title><link rel="stylesheet" href="styles.css"></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-done" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" style="fill:var(--ok)"/><path d="M4.8 8.3l2.1 2.1 4.3-4.6" style="fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"/></symbol>
+<symbol id="i-todo" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" style="fill:none;stroke:var(--idle);stroke-width:1.6"/></symbol>
+<symbol id="i-wait" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" style="fill:none;stroke:var(--idle);stroke-width:1.6;stroke-dasharray:2.4 2.2"/></symbol>
+<symbol id="i-run" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.2" style="fill:none;stroke:var(--run-soft);stroke-width:2.2"/><path d="M8 1.8a6.2 6.2 0 0 1 6.2 6.2" style="fill:none;stroke:var(--run);stroke-width:2.2;stroke-linecap:round"/></symbol>
+<symbol id="i-fail" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" style="fill:var(--bad)"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" style="stroke:#fff;stroke-width:1.8;stroke-linecap:round"/></symbol>
+<symbol id="i-ask" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" style="fill:var(--ask)"/><path d="M8 4.4v4.3" style="stroke:#fff;stroke-width:1.8;stroke-linecap:round"/><circle cx="8" cy="11.4" r="1.1" style="fill:#fff"/></symbol>
+<symbol id="i-fix" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" style="fill:var(--ok)"/><path d="M10.6 4.2a2.4 2.4 0 0 0-3 3L4.4 10.4l1.2 1.2 3.2-3.2a2.4 2.4 0 0 0 3-3l-1.3 1.3-1.1-.3-.3-1.1z" style="fill:#fff"/></symbol>
+</defs></svg>
+<div class="caption"><h1>4. List view</h1><p>The same project as the graph, as a tree: milestone, feature, task. Each task comes from a checkbox in <code>tasks.md</code> and shows as an icon, and the attempts come from <code>progress.md</code>. A feature expands to show its tasks. "Needs" lists the dependencies.</p><div class="stories">US6, US7, US9</div></div>
+<div class="app">
+<header class="top"><span class="logo"><b>◆</b> specyard</span><span class="proj">ledger · ~/workplace/ledger</span><span class="spacer"></span><span class="chip stale">⚠ 1 stale</span><span class="chip run">⏵ 1 running</span><a class="chip ask" href="07-inbox-batch.html">● 5 need you</a></header>
+<nav class="side">
+<h4>Project</h4>
+<div class="item"><span class="dot ok"></span>requirements.md</div>
+<div class="item"><span class="dot ok"></span>design.md</div>
+<div class="item"><span class="dot ok"></span>milestones.md</div>
+<h4>Views</h4>
+<a href="03-project-graph.html">Graph</a>
+<a class="on" href="04-project-list.html">List</a>
+<a href="07-inbox-batch.html">Inbox<span class="count">5</span></a>
+<h4>Milestones</h4>
+<a href="#">M1 Ledger core<span class="count">2/3</span></a>
+<a href="#">M2 Accounts API<span class="count">0/3</span></a>
+<a href="#">M3 Statements<span class="count">0/2</span></a>
+</nav>
+<main>
+<div class="row" style="margin-bottom:10px"><h2>ledger</h2><span class="muted">3 milestones · 8 features · 31 tasks · 14 done</span><span class="spacer"></span><div class="seg"><a href="03-project-graph.html">Graph</a><a class="on" href="04-project-list.html">List</a></div></div>
+<div class="panel" style="padding:0">
+<table>
+<tr><th style="width:42%">Item</th><th>Stage</th><th>Needs</th><th>Tasks</th><th>Last activity</th><th></th></tr>
+<tr class="group"><td>▾ M1 Ledger core</td><td><span class="badge accent">2 of 3 done</span></td><td></td><td>12/12</td><td class="muted">PR #19 opened, 2h ago</td><td></td></tr>
+<tr><td style="padding-left:26px">▸ F1 Double-entry postings</td><td><span class="badge ok">done</span></td><td class="muted">none</td><td>5/5</td><td class="muted">merged Nov 2</td><td><a href="09-evidence.html">Evidence</a></td></tr>
+<tr><td style="padding-left:26px">▸ F2 Idempotent writes</td><td><span class="badge ok">done</span></td><td class="muted">none</td><td>4/4</td><td class="muted">merged Nov 4</td><td><a href="09-evidence.html">Evidence</a></td></tr>
+<tr><td style="padding-left:26px">▸ F3 CI/CD</td><td><span class="badge accent">PR open</span></td><td class="muted">none</td><td>3/3</td><td class="muted">PR #19, 2h ago</td><td><a href="09-evidence.html">Evidence</a></td></tr>
+<tr class="group"><td>▾ M2 Accounts API</td><td><span class="badge run">in progress</span></td><td class="muted">M1</td><td>2/13</td><td class="muted">verify started, 4m ago</td><td></td></tr>
+<tr><td style="padding-left:26px">▾ F1 Create account</td><td><span class="badge run">⏵ verify r2</span></td><td class="muted">M1·F1</td><td>4/4</td><td class="muted">4m ago</td><td><a href="06-run-live.html">Run</a></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-done"/></svg>1.1 Account table and migration</td><td class="muted">done · 1 attempt</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-done"/></svg>1.2 POST /accounts handler <span class="badge">parallel</span></td><td class="muted">done · 2 attempts</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-done"/></svg>1.3 Currency validation <span class="badge">parallel</span></td><td class="muted">done · 1 attempt</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-fix"/></svg>Fix F1: duplicate external_id gives 409</td><td class="muted">fix task · from verify case 4</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:26px">▾ F2 Transfers</td><td><span class="badge">waits on F1</span></td><td class="muted">M1·F2, M2·F1</td><td>0/9</td><td class="muted">tasks v2 in review, 6m ago</td><td><a href="05-feature-drilldown.html">Open</a></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-todo"/></svg>1.1 Transfer table and ledger entries</td><td class="muted">not started</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-wait"/></svg>2.1 POST /transfers: validate, return 201 or 4xx</td><td class="muted">waits on 1.1</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-wait"/></svg>2.2 Post both entries in one transaction</td><td class="muted">waits on 2.1</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:48px"><svg class="ti"><use href="#i-todo"/></svg>3.1 GET /accounts/{id}/transfers <span class="badge">parallel</span></td><td class="muted">not started</td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:48px" class="muted">+ 5 more tasks</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td style="padding-left:26px">▸ F3 API auth</td><td><span class="badge ask">● 4 questions</span></td><td class="muted">M1·F3</td><td>–</td><td class="muted">/to-design asked, 12m ago</td><td><a href="07-inbox-batch.html">Answer</a></td></tr>
+<tr class="group"><td>▾ M3 Statements</td><td><span class="badge">not started</span></td><td class="muted">M2</td><td>0/6</td><td class="muted"></td><td></td></tr>
+<tr><td style="padding-left:26px">▸ F1 Monthly statement</td><td><span class="badge stale">⚠ stale tasks</span></td><td class="muted">M2·F2, M2·F3</td><td>0/6</td><td class="muted">design.md changed after tasks</td><td><a href="08-stale-spec.html">Review</a></td></tr>
+<tr><td style="padding-left:26px">▸ F2 PDF export</td><td><span class="badge">needs design</span></td><td class="muted">M3·F1</td><td>–</td><td class="muted"></td><td><a href="05-feature-drilldown.html">Open</a></td></tr>
+</table>
+<div class="legend" style="padding:10px 14px;margin:0;border-top:1px solid var(--line)"><span><svg class="ti"><use href="#i-done"/></svg>done</span><span><svg class="ti spin"><use href="#i-run"/></svg>running</span><span><svg class="ti"><use href="#i-fail"/></svg>failed 3 attempts</span><span><svg class="ti"><use href="#i-ask"/></svg>needs you</span><span><svg class="ti"><use href="#i-todo"/></svg>to do</span><span><svg class="ti"><use href="#i-wait"/></svg>waits on a task</span><span><svg class="ti"><use href="#i-fix"/></svg>fix task, done</span></div></div>
+</main></div>
+<div class="caption" style="padding-bottom:16px"><a href="index.html">All mocks</a> · Next: <a href="05-feature-drilldown.html">5. Feature page</a></div>
+</body></html>
