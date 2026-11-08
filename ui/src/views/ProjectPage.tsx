@@ -125,9 +125,9 @@ export function AddContextFile({ class: className }: { class: string }) {
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const onChange = async (event: Event) => {
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = "";
+    const picker = event.currentTarget as HTMLInputElement;
+    const file = picker.files?.[0];
+    picker.value = "";
     if (!file) return;
     const status = await addContextFile(file).then(
       (res) => res.status,

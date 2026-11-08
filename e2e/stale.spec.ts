@@ -19,7 +19,8 @@ const milestones = `# Ledger — Milestones
 `;
 
 /** A git repo whose committed design built both task lists; then the design changes without a commit. */
-function staleRepo(milestonesFromDesign = false): string {
+/** `chain`: milestones.md is made from design.md, and the task list from milestones.md, so it is stale only through it. */
+function staleRepo(milestonesFromDesign = false, chain = false): string {
   const root = mkdtempSync(join(tmpdir(), "specyard-stale-"));
   const dir = join(root, "specs", "ledger");
   const write = (path: string, text: string) => {
@@ -28,8 +29,10 @@ function staleRepo(milestonesFromDesign = false): string {
   };
   write("requirements.md", "# Ledger — Requirements\n");
   write("design.md", designV1);
-  write("milestones.md", milestonesFromDesign ? milestones.replace("# Ledger — Milestones\n", `# Ledger — Milestones\n\n<!-- sources: design.md ${hashText(designV1)} -->\n`) : milestones);
-  write("m1-statements/f1-monthly-statement/tasks.md", `# Monthly statement — Tasks\n\n<!-- sources: ../../design.md ${hashText(designV1)} -->\nStatus: draft\n\n## 1. Build it [serial]\n- [ ] 1.1 Do it.\n`);
+  const milestonesText = milestonesFromDesign || chain ? milestones.replace("# Ledger — Milestones\n", `# Ledger — Milestones\n\n<!-- sources: design.md ${hashText(designV1)} -->\n`) : milestones;
+  write("milestones.md", milestonesText);
+  const source = chain ? `../../milestones.md ${hashText(milestonesText)}` : `../../design.md ${hashText(designV1)}`;
+  write("m1-statements/f1-monthly-statement/tasks.md", `# Monthly statement — Tasks\n\n<!-- sources: ${source} -->\nStatus: draft\n\n## 1. Build it [serial]\n- [ ] 1.1 Do it.\n`);
   const git = (...args: string[]) => execFileSync("git", ["-C", root, ...args], { stdio: "pipe" });
   git("init", "-q");
   git("-c", "user.email=t@example.com", "-c", "user.name=t", "add", ".");
@@ -41,11 +44,12 @@ function staleRepo(milestonesFromDesign = false): string {
 let server: RunningServer | undefined;
 test.afterEach(async () => server?.close());
 
-async function open(page: Page, hash = "", milestonesFromDesign = false) {
-  const dir = staleRepo(milestonesFromDesign);
+async function open(page: Page, hash = "", milestonesFromDesign = false, chain = false): Promise<string> {
+  const dir = staleRepo(milestonesFromDesign, chain);
   const project = { name: "ledger", dir };
   server = await startServer({ port: 0, projects: [project], current: project, uiDir: uiDist });
   await page.goto(`${server.url}/?t=${server.token}${hash}`);
+  return dir;
 }
 
 test("a feature built from a changed design shows stale in the graph, the list and the header", async ({ page }) => {
@@ -80,4 +84,19 @@ test("the sidebar marks a stale feature and links a stale project file to its st
   await expect(page.locator(".side a.sub", { hasText: "F2 PDF export" }).locator(".dot.stale")).toHaveCount(0);
   await expect(page.locator(".side a", { hasText: "milestones.md" })).toHaveAttribute("href", "#/stale/milestones.md");
   await expect(page.locator(".side a", { hasText: "design.md" })).toHaveAttribute("href", "#/project");
+});
+
+
+test("the stale page shows hunks and updates when the source changes again while it is open", async ({ page }) => {
+  const dir = await open(page, `#/stale/${encodeURIComponent("m1-statements/f1-monthly-statement/tasks.md")}`);
+  await expect(page.locator(".diff .h").first()).toContainText("@@");
+  await expect(page.locator('[data-diff="add"]')).toContainText("the account's time zone");
+  writeFileSync(join(dir, "design.md"), designV2.replace("the account's time zone", "the customer's chosen time zone"));
+  await expect(page.locator('[data-diff="add"]')).toContainText("the customer's chosen time zone");
+});
+
+test("a file stale only through another file links to it instead of offering mark as not affected", async ({ page }) => {
+  await open(page, `#/stale/${encodeURIComponent("m1-statements/f1-monthly-statement/tasks.md")}`, false, true);
+  await expect(page.getByRole("link", { name: "Resolve milestones.md first" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Mark as not affected" })).toHaveCount(0);
 });

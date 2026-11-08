@@ -21,7 +21,8 @@ export type Stage =
   | "pr-open"
   | "done";
 
-export type Issue = { file: string; line: number; kind: "error" | "warning"; message: string };
+/** `feature` is set when the issue is in one of the feature's files or on its line in milestones.md. */
+export type Issue = { file: string; line: number; kind: "error" | "warning"; message: string; feature?: string };
 export type Task = { id: string; text: string; done: boolean; attempts: number };
 export type Parent = Omit<ParentEntry, "tasks" | "line"> & { tasks: Task[] };
 
@@ -45,6 +46,8 @@ export type Feature = {
   updatedAt: number | undefined;
   /** A file of this feature was made from a source that changed since. */
   stale: boolean;
+  /** Paths of this feature's stale files. */
+  staleFiles: string[];
 };
 
 /** A file under `context/` or `mocks/`, path relative to the project folder, mtime in ms. */
@@ -117,8 +120,18 @@ export function buildModel(
     if (!depsDone || !milestonesDone) f.stage = "waits-on-deps";
   }
 
+  // Tag each issue with its feature: by folder for feature files, by line for feature lines in milestones.md.
+  const byLine = new Map([...lines].map(([id, line]) => [line, id]));
+  for (const issue of issues) {
+    issue.feature ??=
+      issue.file === "milestones.md" ? byLine.get(issue.line) : features.find((f) => f.dir !== undefined && issue.file.startsWith(`${f.dir}/`))?.id;
+  }
+
   const stale = findStale(files, contextFiles);
-  for (const f of features) f.stale = f.dir !== undefined && stale.some((s) => s.file.startsWith(`${f.dir}/`));
+  for (const f of features) {
+    f.staleFiles = f.dir === undefined ? [] : stale.filter((s) => s.file.startsWith(`${f.dir}/`)).map((s) => s.file);
+    f.stale = f.staleFiles.length > 0;
+  }
 
   return {
     name,
@@ -182,9 +195,10 @@ function readFeature(
       tasks: tasks.map((t) => ({ id: t.id, text: t.text, done: t.done, attempts: attempts.get(t.id) ?? 0 })),
     })),
     fixTasks: progress?.tasks.filter((t) => /^X\d+$/.test(t.id)) ?? [],
-    implementable: !hasFile.tasks || parentEntries !== undefined,
+    implementable: !hasFile.tasks || (parentEntries !== undefined && header !== undefined),
     updatedAt: newest(dir === undefined ? [] : [...mtimes].filter(([path]) => path.startsWith(`${dir}/`)).map(([, time]) => time)),
     stale: false,
+    staleFiles: [],
   };
 }
 

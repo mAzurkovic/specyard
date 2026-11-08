@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { basename, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import type { AddressInfo } from "node:net";
 import { authorize } from "./auth.js";
 import { readInside } from "./inside.js";
 import { buildModel, type ProjectModel } from "./model.js";
@@ -126,7 +127,8 @@ export async function startServer(options: Options): Promise<RunningServer> {
       return void readJson(req).then(async (body) => {
         const file = (body as { file?: unknown } | undefined)?.file;
         if (typeof file !== "string") return send(res, 400);
-        if (!(await markNotAffected(project.dir, snapshot, file))) return send(res, 404);
+        const result = await markNotAffected(project.dir, snapshot, file);
+        if (result !== "marked") return send(res, result === "not-stale" ? 404 : 409);
         // Rebuild now so the next read already shows the flag gone; the watcher would only follow later.
         await rebuild(project);
         send(res, 204);
@@ -150,11 +152,11 @@ export async function startServer(options: Options): Promise<RunningServer> {
     send(res, 404);
   });
 
-  const port = await listen(server, options.port);
+  const { port, address } = await listen(server, options.port);
   origin = `http://${HOST}:${port}`;
   return {
     url: origin,
-    address: HOST,
+    address,
     token,
     close: () =>
       new Promise((resolve) => {
@@ -165,7 +167,8 @@ export async function startServer(options: Options): Promise<RunningServer> {
   };
 }
 
-async function listen(server: Server, first: number): Promise<number> {
+/** The port and the address the server is really bound to. */
+async function listen(server: Server, first: number): Promise<{ port: number; address: string }> {
   for (let i = 0; i < PORT_TRIES; i++) {
     const port = first === 0 ? 0 : first + i;
     try {
@@ -176,7 +179,8 @@ async function listen(server: Server, first: number): Promise<number> {
           resolve();
         });
       });
-      return (server.address() as { port: number }).port;
+      const bound = server.address() as AddressInfo;
+      return { port: bound.port, address: bound.address };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EADDRINUSE") throw error;
     }

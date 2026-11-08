@@ -7,6 +7,8 @@ const TOP = 60;
 const ROW = 110;
 const BOTTOM = 20;
 const CURVE = 60;
+/** Track spacing inside the 40 px lane gap and the 44 px gap between rows, for edges that skip lanes. */
+const TRACK = { count: 5, leaveStart: 5, step: 5, enterInset: 8, channelStep: 6 };
 /** Same-lane edges that skip rows bend this far into the free margin right of the nodes. */
 const SIDE_BEND = 30;
 
@@ -77,9 +79,13 @@ function edgePath(from: PlacedNode, to: PlacedNode): string {
   }
   const [x1, x2] = [from.x + NODE.width, to.x];
   if (to.lane === from.lane + 1) return `M${x1} ${midFrom} C${x1 + CURVE} ${midFrom}, ${x2 - CURVE} ${midTo}, ${x2} ${midTo}`;
-  const leaveColumn = laneX(from.lane) + LANE.width + LANE.gap / 2;
-  const enterColumn = laneX(to.lane) - LANE.gap / 2;
-  const channel = to.y - (ROW - NODE.height) / 2;
+  // Own tracks, so two such edges never draw along the same line: leave in the left half of the gap,
+  // offset by source row; enter in the right half; cross in a channel offset by target lane.
+  // Known limit: rows 5 apart in one lane share a leave column; widen the gap if that becomes common.
+  const sourceRow = Math.round((from.y - TOP) / ROW);
+  const leaveColumn = laneX(from.lane) + LANE.width + TRACK.leaveStart + (sourceRow % TRACK.count) * TRACK.step;
+  const enterColumn = laneX(to.lane) - TRACK.enterInset;
+  const channel = to.y - (ROW - NODE.height) / 2 + ((to.lane % TRACK.count) - Math.floor(TRACK.count / 2)) * TRACK.channelStep;
   return `M${x1} ${midFrom} L${leaveColumn} ${midFrom} L${leaveColumn} ${channel} L${enterColumn} ${channel} L${enterColumn} ${midTo} L${x2} ${midTo}`;
 }
 

@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs } from "./args.js";
 import { checkClaude, checkSkills } from "./checks.js";
-import { projectCheck, resolveProject } from "./projects.js";
+import { findRepoRoot, projectCheck, resolveProject } from "./projects.js";
 import { formatChecks } from "./report.js";
 import { startServer } from "./server.js";
 
@@ -25,8 +25,10 @@ if (args.command === "version") {
 
 async function start(pathArg: string | undefined): Promise<void> {
   console.log(`specyard ${pkg.version}`);
-  const choice = resolveProject(process.cwd(), pathArg);
-  const { lines, start: ok } = formatChecks([await checkClaude(), ...checkSkills(homedir()), projectCheck(choice, process.cwd())]);
+  // `--path` is relative to where the user typed it; without it, look up from there to the repo's specs/.
+  const root = pathArg === undefined ? findRepoRoot(process.cwd()) : process.cwd();
+  const choice = resolveProject(root, pathArg);
+  const { lines, start: ok } = formatChecks([await checkClaude(), ...checkSkills(homedir()), projectCheck(choice, root)]);
   lines.forEach((line) => console.log(line));
   if (!ok) process.exit(1);
   if (choice.kind === "error") process.exit(2);

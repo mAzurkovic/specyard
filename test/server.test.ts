@@ -474,6 +474,28 @@ describe("stale specs", () => {
     ]);
   });
 
+  it("mark as not affected answers 409 for a file that is stale only through another file", async () => {
+    const { server } = await staleProject(false);
+    const res = await api(server, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "m1-a/f1-b/tasks.md" }) });
+    expect(res.status).toBe(409);
+  });
+
+  it.each([
+    ["a spec source that is not valid UTF-8", "design.md", Buffer.from([0x23, 0x20, 0x44, 0xe9, 0x0a])],
+    ["a binary context source", "context/diagram.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0x10])],
+  ])("mark as not affected clears a file made from %s", async (_label, source, bytes) => {
+    const dir = join(tempDir("bytes"), "specs", "p");
+    mkdirSync(join(dir, "context"), { recursive: true });
+    writeFileSync(join(dir, "requirements.md"), "# R\n");
+    writeFileSync(join(dir, source), bytes);
+    writeFileSync(join(dir, "milestones.md"), `# M\n\n<!-- sources: ${source} 000000000000 -->\n`);
+    const project: Project = { name: "p", dir };
+    running = await startServer({ port: 0, projects: [project], current: project, uiDir: uiDir() });
+    expect((await api(running, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "milestones.md" }) })).status).toBe(204);
+    const model = (await (await api(running, "/api/project")).json()).model;
+    expect(model.stale).toEqual([]);
+  });
+
   it("mark as not affected answers 404 for a file that is not stale", async () => {
     const { server } = await staleProject();
     const res = await api(server, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "requirements.md" }) });

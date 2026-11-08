@@ -11,8 +11,14 @@ export function watchProject(dir: string, onChange: () => void, debounceMs = 150
     clearTimeout(timer);
     timer = setTimeout(onChange, debounceMs);
   });
-  return () => {
+  const stop = () => {
     clearTimeout(timer);
     watcher.close();
   };
+  // Linux reports a deleted watched folder as an error event; without a listener it would crash the process.
+  watcher.on("error", (error) => {
+    console.error(`specyard: stopped watching ${dir}: ${error.message}`);
+    stop();
+  });
+  return stop;
 }

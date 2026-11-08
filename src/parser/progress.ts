@@ -36,7 +36,7 @@ export function parseProgress(text: string): Parsed<Progress> {
 
     const roundMatch = ROUND.exec(line);
     if (roundMatch) round = Number(roundMatch[1]);
-    if (line in LISTS) list = LISTS[line as keyof typeof LISTS];
+    if (Object.hasOwn(LISTS, line)) list = LISTS[line as keyof typeof LISTS];
     else if (list && line.startsWith("- ")) lists[list].push(line.slice(2));
     else if (line === "" || !line.startsWith("- ")) list = undefined;
   }

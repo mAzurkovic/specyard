@@ -96,7 +96,7 @@ describe("buildModel tasks and issues", () => {
 
   it("keeps building when a tasks.md does not parse, and marks that feature not implementable", () => {
     const model = buildModel("p", files({ "m1-core/f3-reads/tasks.md": "## 1. A [whenever]\n" }, twoMilestones));
-    expect(model.issues).toContainEqual({ file: "m1-core/f3-reads/tasks.md", line: 1, kind: "error", message: "expected a tag like `[serial]` or `[parallel, needs 1, 2.3]`" });
+    expect(model.issues).toContainEqual({ file: "m1-core/f3-reads/tasks.md", line: 1, kind: "error", message: "expected a tag like `[serial]` or `[parallel, needs 1, 2.3]`", feature: "M1·F3" });
     expect(model.features.find((f) => f.id === "M1·F3")?.implementable).toBe(false);
     expect(model.features.find((f) => f.id === "M1·F2")?.implementable).toBe(true);
   });
@@ -111,13 +111,13 @@ describe("buildModel tasks and issues", () => {
 
   it("carries parser warnings as issues", () => {
     const model = buildModel("p", files({}, milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Status: done.\n")));
-    expect(model.issues).toEqual([{ file: "milestones.md", line: 5, kind: "warning", message: "M1 F1 has no dependency list; treated as none" }]);
+    expect(model.issues).toEqual([{ file: "milestones.md", line: 5, kind: "warning", message: "M1 F1 has no dependency list; treated as none", feature: "M1·F1" }]);
   });
 
   it("warns on a dependency that names no feature, and draws no edge for it", () => {
     const model = buildModel("p", files({}, milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Needs: F9. Status: not started.\n")));
     expect(model.edges).toEqual([]);
-    expect(model.issues).toContainEqual({ file: "milestones.md", line: 5, kind: "warning", message: "M1·F1 needs M1·F9, which does not exist" });
+    expect(model.issues).toContainEqual({ file: "milestones.md", line: 5, kind: "warning", message: "M1·F1 needs M1·F9, which does not exist", feature: "M1·F1" });
   });
 
   it("warns on a dependency cycle and still finds a path", () => {
@@ -154,5 +154,20 @@ describe("buildModel stale flags", () => {
     expect(model.stale.map((s) => s.file)).toEqual(["m1-c/f1-a/tasks.md"]);
     expect(model.staleCount).toBe(1);
     expect(model.features.map((f) => [f.id, f.stale])).toEqual([["M1·F1", true], ["M1·F2", false]]);
+  });
+});
+
+describe("follow-up fixes", () => {
+  const text = milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Needs: none. Status: not started.\n  - F2. B: x. Docs: tasks. Status: not started.\n");
+
+  it("a tasks.md with a broken header line is not implementable", () => {
+    const model = buildModel("p", files({ "m1-c/f1-a/tasks.md": "# T\n\nStatus: approved abc\n\n## 1. A [serial]\n- [ ] 1.1 x\n" }, text));
+    expect(model.features.find((f) => f.id === "M1·F1")?.implementable).toBe(false);
+  });
+
+  it("issues name the feature they belong to", () => {
+    const model = buildModel("p", files({ "m1-c/f1-a/tasks.md": "## 1. A [whenever]\n" }, text));
+    expect(model.issues.find((i) => i.file === "m1-c/f1-a/tasks.md")?.feature).toBe("M1·F1");
+    expect(model.issues.find((i) => i.message.includes("no dependency list"))?.feature).toBe("M1·F2");
   });
 });

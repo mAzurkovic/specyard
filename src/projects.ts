@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import type { CheckResult } from "./checks.js";
 
 export type Project = { name: string; dir: string };
@@ -11,6 +11,14 @@ export type ProjectChoice =
   | { kind: "error"; message: string };
 
 const isProjectDir = (dir: string) => existsSync(join(dir, "requirements.md")) || existsSync(join(dir, "design.md"));
+
+/** The nearest folder at or above `cwd` that has `specs/`, not above the git root; `cwd` when there is none. */
+export function findRepoRoot(cwd: string): string {
+  for (let dir = resolve(cwd); ; dir = dirname(dir)) {
+    if (existsSync(join(dir, "specs"))) return dir;
+    if (existsSync(join(dir, ".git")) || dirname(dir) === dir) return resolve(cwd);
+  }
+}
 
 export function findProjects(repoRoot: string): Project[] {
   const specs = join(repoRoot, "specs");

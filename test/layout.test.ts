@@ -145,3 +145,60 @@ describe("edge routing", () => {
     }
   });
 });
+
+/** Straight segments of an SVG path (M and L only; curves are never collinear with them here). */
+function segments(d: string): { x1: number; y1: number; x2: number; y2: number }[] {
+  const nums = (d.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+  if (!/^M[^C]*$/.test(d)) return [];
+  const out = [];
+  for (let i = 0; i + 3 < nums.length; i += 2) out.push({ x1: nums[i]!, y1: nums[i + 1]!, x2: nums[i + 2]!, y2: nums[i + 3]! });
+  return out;
+}
+
+const overlap = (a1: number, a2: number, b1: number, b2: number) => Math.min(Math.max(a1, a2), Math.max(b1, b2)) - Math.max(Math.min(a1, a2), Math.min(b1, b2));
+
+const sharing = buildModel("p", new Map([["requirements.md", ""], ["design.md", ""], ["milestones.md", `# P
+
+## M1. A
+- Features:
+  - F1. Root one: x. Docs: tasks. Needs: none. Status: not started.
+  - F2. Root two: x. Docs: tasks. Needs: none. Status: not started.
+
+## M2. B
+- Features:
+  - F1. Filler: x. Docs: tasks. Needs: none. Status: not started.
+  - F2. Other filler: x. Docs: tasks. Needs: none. Status: not started.
+
+## M3. C
+- Features:
+  - F1. Far one: x. Docs: tasks. Needs: M1 F2. Status: not started.
+  - F2. Far two: x. Docs: tasks. Needs: M1 F1. Status: not started.
+
+## M4. D
+- Features:
+  - F1. Top: x. Docs: tasks. Needs: none. Status: not started.
+  - F2. Into row two from M1: x. Docs: tasks. Needs: M1 F1. Status: not started.
+
+## M5. E
+- Features:
+  - F1. Top: x. Docs: tasks. Needs: none. Status: not started.
+  - F2. Into row two from M2: x. Docs: tasks. Needs: M2 F2. Status: not started.
+`]]));
+
+it("never lets two edges with different ends share a line segment", () => {
+  const placed = layoutGraph(sharing);
+  const edges = placed.edges.map((e) => ({ ...e, segs: segments(e.path) }));
+  for (const a of edges) {
+    for (const b of edges) {
+      if (a === b || a.from === b.from || a.to === b.to) continue;
+      for (const s of a.segs) {
+        for (const t of b.segs) {
+          const bothVertical = s.x1 === s.x2 && t.x1 === t.x2 && s.x1 === t.x1;
+          const bothHorizontal = s.y1 === s.y2 && t.y1 === t.y2 && s.y1 === t.y1;
+          const shared = bothVertical ? overlap(s.y1, s.y2, t.y1, t.y2) : bothHorizontal ? overlap(s.x1, s.x2, t.x1, t.x2) : 0;
+          expect(shared, `${a.from}>${a.to} and ${b.from}>${b.to} share a segment`).toBeLessThanOrEqual(1);
+        }
+      }
+    }
+  }
+});

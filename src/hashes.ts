@@ -20,12 +20,11 @@ export async function hashFile(path: string): Promise<string> {
  * Splits like the parser (on "," with any spacing) and edits only each `<path> <hash>` token.
  */
 export function rewriteSources(text: string, hashes: Map<string, string>): string {
-  return text.replace(SOURCES_LINE, (line, list: string) => {
-    const start = line.indexOf(list);
+  return text.replace(SOURCES_LINE, (_line, list: string) => {
     const updated = list
       .split(",")
       .map((part) => part.replace(/(\S+) ([0-9a-f]{12})/, (token, path: string) => (hashes.has(path) ? `${path} ${hashes.get(path)}` : token)))
       .join(",");
-    return line.slice(0, start) + updated + line.slice(start + list.length);
+    return `<!-- sources: ${updated} -->`;
   });
 }

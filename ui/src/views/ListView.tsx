@@ -22,7 +22,7 @@ export function ListView({ model }: { model: ProjectModel }) {
       return next;
     });
   const byId = new Map(model.features.map((f) => [f.id, f]));
-  const issues = issuesByFeature(model.features, model.issues);
+  const issues = issuesByFeature(model.issues);
 
   return (
     <div class="panel" style={{ padding: 0 }}>

@@ -23,6 +23,15 @@ describe("featureSteps", () => {
     expect(states(f)).toEqual(["Requirements=done", "Design=now", "Tasks=todo", "Implement=todo", "PR=todo"]);
   });
 
+  it("holds at Requirements for a feature with no design step and no files yet", () => {
+    expect(states(feature({ docs: ["requirements", "tasks"], stage: "needs-tasks" }))[0]).toBe("Requirements=now");
+  });
+
+  it("does not hold at Requirements once a later file exists", () => {
+    const f = feature({ docs: ["requirements", "design", "tasks"], stage: "ready", hasFile: { requirements: false, design: true, tasks: true, progress: false } });
+    expect(states(f)[3]).toBe("Implement=now");
+  });
+
   it("marks the project's requirements and design as done for a tasks-only feature", () => {
     expect(states(feature({ docs: ["tasks"], stage: "needs-tasks" }))).toEqual([
       "Requirements (project)=done",
