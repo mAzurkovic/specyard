@@ -3,7 +3,6 @@ import { request } from "node:http";
 import { connect, createServer as createNetServer, type Server as NetServer } from "node:net";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { hashText } from "../src/hashes.js";
 import type { Project } from "../src/projects.js";
 import { startServer, type RunningServer } from "../src/server.js";
 import { tempDir } from "./helpers.js";
@@ -415,90 +414,5 @@ describe("static files", () => {
         .end();
     });
     expect(status).toBe(404);
-  });
-});
-
-describe("stale specs", () => {
-  async function staleProject(withOutsideSource = true) {
-    const dir = join(tempDir("stale"), "specs", "p");
-    mkdirSync(join(dir, "m1-a", "f1-b"), { recursive: true });
-    const oldReq = "# R\n\n- FR1. old\n";
-    writeFileSync(join(dir, "requirements.md"), "# R\n\n- FR1. new\n");
-    const outside = withOutsideSource ? ", ../../../../etc/hosts 000000000000" : "";
-    const design = `# D\n\n<!-- sources: requirements.md ${hashText(oldReq)}${outside} -->\n\nBody line.\n`;
-    writeFileSync(join(dir, "design.md"), design);
-    writeFileSync(join(dir, "m1-a", "f1-b", "tasks.md"), `# T\n\n<!-- sources: ../../design.md ${hashText(design)} -->\nStatus: draft\n`);
-    const project: Project = { name: "p", dir };
-    running = await startServer({ port: 0, projects: [project], current: project, uiDir: uiDir() });
-    return { dir, design, server: running };
-  }
-
-  it("returns a stale file's changed sources with their texts and the files built from it", async () => {
-    const { server } = await staleProject();
-    const body = await (await api(server, "/api/stale?file=design.md")).json();
-    expect(body.file).toBe("design.md");
-    const req = body.reasons.find((r: { source: string }) => r.source === "requirements.md");
-    expect(req).toMatchObject({ via: false, oldText: null, newText: "# R\n\n- FR1. new\n" });
-    expect(body.affected).toEqual(["m1-a/f1-b/tasks.md"]);
-  });
-
-  it("never reads a source outside the project folder", async () => {
-    const { server } = await staleProject();
-    const body = await (await api(server, "/api/stale?file=design.md")).json();
-    const outside = body.reasons.find((r: { source: string }) => r.source.includes("etc/hosts"));
-    expect(outside).toMatchObject({ newText: null, oldText: null });
-  });
-
-  it("answers 404 for a file that is not stale", async () => {
-    const { server } = await staleProject();
-    expect((await api(server, "/api/stale?file=requirements.md")).status).toBe(404);
-  });
-
-  it("mark as not affected rewrites only the sources line, and the flag clears", async () => {
-    const { dir, design, server } = await staleProject(false);
-    const res = await api(server, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "design.md" }) });
-    expect(res.status).toBe(204);
-    const after = readFileSync(join(dir, "design.md"), "utf8");
-    expect(after).toBe(design.replace(/requirements\.md [0-9a-f]{12}/, `requirements.md ${hashText("# R\n\n- FR1. new\n")}`));
-    const model = (await (await api(server, "/api/project")).json()).model;
-    expect(model.stale.map((s: { file: string }) => s.file)).not.toContain("design.md");
-  });
-
-  it("a source outside the project keeps its hash, so the file stays flagged for it", async () => {
-    const { dir, server } = await staleProject();
-    await api(server, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "design.md" }) });
-    expect(readFileSync(join(dir, "design.md"), "utf8")).toContain("../../../../etc/hosts 000000000000");
-    const model = (await (await api(server, "/api/project")).json()).model;
-    expect(model.stale.find((s: { file: string }) => s.file === "design.md")?.reasons).toEqual([
-      { source: "../../../../etc/hosts", recorded: "000000000000", current: null, via: false },
-    ]);
-  });
-
-  it("mark as not affected answers 409 for a file that is stale only through another file", async () => {
-    const { server } = await staleProject(false);
-    const res = await api(server, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "m1-a/f1-b/tasks.md" }) });
-    expect(res.status).toBe(409);
-  });
-
-  it.each([
-    ["a spec source that is not valid UTF-8", "design.md", Buffer.from([0x23, 0x20, 0x44, 0xe9, 0x0a])],
-    ["a binary context source", "context/diagram.png", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff, 0x10])],
-  ])("mark as not affected clears a file made from %s", async (_label, source, bytes) => {
-    const dir = join(tempDir("bytes"), "specs", "p");
-    mkdirSync(join(dir, "context"), { recursive: true });
-    writeFileSync(join(dir, "requirements.md"), "# R\n");
-    writeFileSync(join(dir, source), bytes);
-    writeFileSync(join(dir, "milestones.md"), `# M\n\n<!-- sources: ${source} 000000000000 -->\n`);
-    const project: Project = { name: "p", dir };
-    running = await startServer({ port: 0, projects: [project], current: project, uiDir: uiDir() });
-    expect((await api(running, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "milestones.md" }) })).status).toBe(204);
-    const model = (await (await api(running, "/api/project")).json()).model;
-    expect(model.stale).toEqual([]);
-  });
-
-  it("mark as not affected answers 404 for a file that is not stale", async () => {
-    const { server } = await staleProject();
-    const res = await api(server, "/api/stale/not-affected", { method: "POST", body: JSON.stringify({ file: "requirements.md" }) });
-    expect(res.status).toBe(404);
   });
 });

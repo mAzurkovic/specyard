@@ -1,6 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
 import type { ProjectModel } from "../../src/model.js";
-import type { StaleDetails } from "../../src/staleApi.js";
 
 export type ProjectRef = { name: string; path: string };
 export type ProjectState = { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null };
@@ -28,16 +27,6 @@ export function addContextFile(file: File): Promise<Response> {
   const body = new FormData();
   body.append("file", file);
   return fetch("/api/context", { method: "POST", headers: auth, body });
-}
-
-/** Null when the file is not stale (any other failure too: the page then says so). */
-export async function staleDetails(file: string): Promise<StaleDetails | null> {
-  const res = await fetch(`/api/stale?file=${encodeURIComponent(file)}`, { headers: auth });
-  return res.ok ? ((await res.json()) as StaleDetails) : null;
-}
-
-export function markNotAffected(file: string): Promise<Response> {
-  return fetch("/api/stale/not-affected", { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ file }) });
 }
 
 /** Live project state from the server's event stream; null until the first event. */

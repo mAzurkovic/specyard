@@ -6,8 +6,6 @@ Specyard is a local web UI and CLI over the spec-driven skill workflow (`/to-brd
 
 Terms:
 - **Project:** a folder `specs/<project>/` that holds `requirements.md` or `design.md`.
-- **Generated file:** a file a skill writes from other files: `design.md`, `milestones.md`, and a feature's `requirements.md`, `design.md`, `tasks.md`.
-- **Source files:** the files a generated file was made from, context files included.
 - **Context files:** files in `<project>/context/` and `<project>/mocks/`.
 - **Ready (dependency):** the dependency's PR is merged into the default branch.
 
@@ -15,9 +13,9 @@ Terms:
 
 ### Install and start
 - FR1. `npm install -g specyard`: system MUST install the CLI with no other setup step. `specyard --version` prints the version.
-- FR2. `specyard` run in a repo: system MUST check that Claude Code is installed and logged in, that each workflow skill is installed and at which version, and MUST find the project. It prints one line per check.
+- FR2. `specyard` run in a repo: system MUST check that Claude Code is installed and logged in, that each workflow skill is installed, and MUST find the project. It prints one line per check.
 - FR3. Claude Code missing or not logged in: system MUST print the fix command and MUST NOT start the UI.
-- FR4. Workflow skill missing: system MUST print its name and `specyard skills install`. Skill older than the expected version: system MUST print a warning and continue.
+- FR4. Workflow skill missing (no `SKILL.md` in `~/.claude/skills/<name>/`): system MUST print its name and how to install the workflow skills. Skills carry no version; presence is the only check.
 - FR5. One project in `specs/`: system MUST open it. More than one: the UI MUST show a picker. `--path <dir>` MUST open that project with no picker.
 - FR6. No project in `specs/`: the UI MUST show an empty state with "Run /to-brd" as the main action.
 - FR7. Checks pass: system MUST start the server, open the default browser at the UI URL, and print the URL.
@@ -26,9 +24,9 @@ Terms:
 - FR10. Context files: the UI MUST list them, and every skill run MUST get their paths.
 - FR11. "Add context file": system MUST copy the chosen file (Markdown, PDF, image) into `context/`.
 
-### Skill install
-- FR12. `specyard skills install`: system MUST install missing workflow skills into `~/.claude/skills` and update older ones that have no local changes.
-- FR13. Installed skill changed locally, or a symlink: system MUST NOT overwrite it. It MUST show the version gap and let the user choose "back up and replace" (backup as `<name>.bak.<timestamp>`) or "keep".
+### Skill install (removed)
+- FR12. Removed 2026-11-11 (keep it simple): Specyard does not bundle or install skills.
+- FR13. Removed 2026-11-11 (keep it simple): see FR12.
 
 ### Project views
 - FR14. Graph view: system MUST show one lane per milestone, one node per feature, and one edge per dependency from `milestones.md` and `tasks.md`.
@@ -63,21 +61,21 @@ Terms:
 - FR39. Run hits the Claude usage limit: system MUST show "paused: usage limit, resets <time>" in the graph, run view and inbox, and MUST resume the run at the reset time.
 
 ### Inbox
-- FR40. The inbox MUST hold every item that waits for the user, from every run: question batches, tool approvals, deploy and paid-call approvals, BLOCKED verdicts, "Stop and ask" blocks, stale specs, and PRs ready to merge. Each item MUST name its feature and skill.
+- FR40. The inbox MUST hold every item that waits for the user, from every run: questions, tool approvals, deploy and paid-call approvals, BLOCKED verdicts, "Stop and ask" blocks, and PRs ready to merge. Each item MUST name its feature and skill.
 - FR41. Question batch: each question MUST show its options, the recommended option, the reason, and a free-text field.
 - FR42. Submit MUST be enabled only when every question in the batch has an answer. "Accept all recommendations" MUST fill only the unanswered questions. Submit MUST resume the paused run with the answers.
 - FR43. Approval, BLOCKED and "Stop and ask" items MUST offer Approve, Skip and Reply. The answer MUST resume the run.
 - FR44. New inbox item: system MUST send an OS notification and show the inbox count in the browser tab title.
-- FR45. Every page MUST show the inbox count, running count and stale count in the header.
+- FR45. Every page MUST show the inbox count and the running count in the header.
 
-### Stale specs
-- FR46. A generated file is stale when the hash of any of its source files no longer matches the hash recorded in it. A generated file built from a stale file MUST also be stale.
-- FR47. Edits to a generated file itself MUST NOT make it stale.
-- FR48. Stale file: the UI MUST flag it and each feature built from it, in every view.
-- FR49. Stale page: system MUST show the change in the source file since the generated file was made, and list the affected files. When the old version cannot be found, it MUST say so and show no diff.
-- FR50. The user MUST be able to pick affected files and re-run the skill that makes each one.
-- FR51. "Mark as not affected": system MUST write the current source hashes into the generated file and change nothing else.
-- FR52. Running run built from a stale file: the run view MUST show a warning.
+### Stale specs (removed)
+- FR46. Removed 2026-11-11 (keep it simple): no stale detection.
+- FR47. Removed 2026-11-11 (keep it simple): no stale detection.
+- FR48. Removed 2026-11-11 (keep it simple): no stale detection.
+- FR49. Removed 2026-11-11 (keep it simple): no stale detection.
+- FR50. Removed 2026-11-11 (keep it simple): no stale detection.
+- FR51. Removed 2026-11-11 (keep it simple): no stale detection.
+- FR52. Removed 2026-11-11 (keep it simple): no stale detection.
 
 ### Evidence
 - FR53. Evidence page: system MUST show the done gate result, coverage of changed code, the verify table, the review findings with their outcome (fixed, follow-up, rejected with reason), the proof, and the PR link and status.
@@ -87,18 +85,18 @@ Terms:
 - FR57. System MUST detect PRs merged outside Specyard. Without `gh`: a feature branch that the default branch contains counts as merged.
 
 ### File ownership
-- FR58. Specyard MUST write only: the approval line in `tasks.md`, source hashes (FR51), new files in `context/`, and its own run logs and settings.
+- FR58. Specyard MUST write only: the approval line in `tasks.md`, new files in `context/`, and its own run logs and settings.
 - FR59. Specyard MUST NOT edit any other spec file or code file. Every other change MUST go through a skill run.
 - FR60. Run logs and settings MUST live in a folder that git ignores, without changes to the repo's `.gitignore`.
 
-### Skill changes
-- FR61. Each workflow skill MUST carry a `version` in its frontmatter.
-- FR62. Each skill step MUST ask all its independent questions as one batch, then the questions that depend on those answers as the next batch. Each question MUST have a recommended answer and a one-line reason. This MUST also apply when the skill runs from the CLI.
-- FR63. Each skill MUST emit machine-readable events: phase start and end, subagent start and end with skill and result, progress line, question batch, approval request, verdict, run end.
-- FR64. Each skill MUST read the context files of the project.
-- FR65. Each skill that writes a generated file MUST record in it the hash of each source file.
-- FR66. `/to-tasks` MUST write `tasks.md` with a status line set to draft.
-- FR67. `/implement-feature` MUST name fix tasks `X<n>`. A `progress.md` with fix tasks named `F<n>` MUST still parse.
+### Skills
+- FR61. Removed 2026-11-11 (keep it simple): skills carry no version.
+- FR62. Each planning skill that asks questions (`/to-brd`, `/to-design`, `/to-tasks`) MUST ask one question at a time by default, and MUST ask all independent questions of a step together when the user asks for batched questions. This MUST hold in the plain CLI too, and the skills MUST NOT refer to Specyard.
+- FR63. Specyard MUST invoke a skill the way a user does (its slash command and arguments, plus the context file paths and any comment in the same prompt) and MUST read the skill's normal output and files. Skills MUST NOT change for Specyard beyond FR62.
+- FR64. Removed 2026-11-11 (keep it simple): skills stay as they are (FR63).
+- FR65. Removed 2026-11-11 (keep it simple): skills stay as they are (FR63).
+- FR66. Removed 2026-11-11 (keep it simple): skills stay as they are (FR63).
+- FR67. Removed 2026-11-11 (keep it simple): skills stay as they are (FR63).
 
 ## Non-Functional Requirements
 - NFR1. Performance: a spec file change MUST show in the UI within 2 s.
@@ -113,6 +111,8 @@ Terms:
 - NFR10. Look: the UI MUST use the Blueprint light style (`mocks/03-project-graph.html`) by default.
 
 ## Out of Scope
+- Stale detection, and recording which files a spec was made from.
+- Bundling, installing or versioning the workflow skills.
 - Windows.
 - Multi-user use, remote access, cloud runners.
 - Starting runs without the user (autopilot), and scheduling around the usage window.

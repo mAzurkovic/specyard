@@ -8,7 +8,6 @@ import { readInside } from "./inside.js";
 import { buildModel, type ProjectModel } from "./model.js";
 import type { Project } from "./projects.js";
 import { readContextFiles, readMtimes, readProject } from "./readProject.js";
-import { markNotAffected, staleDetails } from "./staleApi.js";
 import { watchProject } from "./watch.js";
 
 export type RunningServer = { url: string; address: string; token: string; close: () => Promise<void> };
@@ -112,30 +111,6 @@ export async function startServer(options: Options): Promise<RunningServer> {
         if (typeof file === "number") return send(res, file);
         res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
         res.end(file);
-      });
-    }
-    if (url.pathname === "/api/stale" && req.method === "GET") {
-      if (!current || !model) return void send(res, 404);
-      return void staleDetails(current.dir, model, url.searchParams.get("file") ?? "").then((details) =>
-        details ? send(res, 200, JSON.stringify(details)) : send(res, 404),
-      );
-    }
-    if (url.pathname === "/api/stale/not-affected") {
-      if (req.method !== "POST") return void send(res, 405);
-      if (!current || !model) return void send(res, 404);
-      const [project, snapshot] = [current, model];
-      return void readJson(req).then(async (body) => {
-        const file = (body as { file?: unknown } | undefined)?.file;
-        if (typeof file !== "string") return send(res, 400);
-        const result = await markNotAffected(project.dir, snapshot, file);
-        if (result !== "marked") return send(res, result === "not-stale" ? 404 : 409);
-        // Rebuild now so the next read already shows the flag gone; the watcher would only follow later.
-        await rebuild(project);
-        send(res, 204);
-        broadcast();
-      }).catch((error: Error) => {
-        console.error(`specyard: cannot mark ${project.dir} as not affected: ${error.message}`);
-        send(res, 500);
       });
     }
     if (url.pathname === "/api/context") {

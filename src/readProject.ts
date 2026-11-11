@@ -1,6 +1,5 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { hashBytes } from "./hashes.js";
 import type { ContextFile, ProjectFiles } from "./model.js";
 
 const PROJECT_FILES = ["requirements.md", "design.md", "milestones.md"];
@@ -38,9 +37,6 @@ export async function readMtimes(projectDir: string, paths: Iterable<string>): P
   return times;
 }
 
-/** Hash of each context file by path, kept while its size and mtime stay the same. Known limit: a rewrite within the same millisecond at the same size keeps the old hash until the next change. */
-const hashCache = new Map<string, { size: number; mtime: number; hash: string }>();
-
 /** Every file under the project's `context/` and `mocks/` folders, sorted by path; dot files are left out. */
 export async function readContextFiles(projectDir: string): Promise<ContextFile[]> {
   const found = await Promise.all(
@@ -60,17 +56,7 @@ export async function readContextFiles(projectDir: string): Promise<ContextFile[
     found.flat().map(async (file) => {
       // A file removed since the listing is simply not there any more.
       const info = await stat(file).catch(missingAsUndefined);
-      if (!info) return;
-      const mtime = Math.round(info.mtimeMs);
-      const cached = hashCache.get(file);
-      let hash = cached && cached.size === info.size && cached.mtime === mtime ? cached.hash : undefined;
-      if (hash === undefined) {
-        const bytes = await readFile(file).catch(missingAsUndefined);
-        if (!bytes) return;
-        hash = hashBytes(bytes);
-        hashCache.set(file, { size: info.size, mtime, hash });
-      }
-      files.push({ path: relative(projectDir, file), size: info.size, mtime, hash });
+      if (info) files.push({ path: relative(projectDir, file), size: info.size, mtime: Math.round(info.mtimeMs) });
     }),
   );
   return files.sort((a, b) => a.path.localeCompare(b.path));

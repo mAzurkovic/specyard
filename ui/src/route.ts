@@ -6,13 +6,10 @@ export type Route =
   | { page: "list" }
   | { page: "project" }
   | { page: "feature"; id: string; tab: string | undefined }
-  | { page: "milestone"; id: string }
-  | { page: "stale"; file: string };
+  | { page: "milestone"; id: string };
 
 export const featureHref = (id: string, tab?: string) => `#/f/${encodeURIComponent(id)}${tab ? `/${tab}` : ""}`;
 export const milestoneHref = (id: string) => `#/m/${encodeURIComponent(id)}`;
-/** The whole path is one segment, so its slashes are encoded. */
-export const staleHref = (file: string) => `#/stale/${encodeURIComponent(file)}`;
 
 export function parseRoute(hash: string): Route {
   let parts: string[];
@@ -25,7 +22,6 @@ export function parseRoute(hash: string): Route {
   if (page === "project" || page === "graph" || page === "list") return { page };
   if (page === "f" && id) return { page: "feature", id, tab };
   if (page === "m" && id) return { page: "milestone", id };
-  if (page === "stale" && id) return { page: "stale", file: id };
   return { page: "home" };
 }
 

@@ -8,13 +8,11 @@ describe("formatChecks", () => {
   it("prints one line per check with its mark and fix", () => {
     const { lines } = formatChecks([
       ok,
-      { name: "verify", status: "warn", detail: "no version", fix: "specyard skills install" },
-      { name: "pr", status: "fail", detail: "not installed", fix: "specyard skills install" },
+      { name: "verify", status: "fail", detail: "not installed", fix: "install the workflow skills into ~/.claude/skills" },
     ]);
     expect(lines).toEqual([
       "✓ Claude Code: logged in",
-      "! verify: no version. Fix: specyard skills install",
-      "✗ pr: not installed. Fix: specyard skills install",
+      "✗ verify: not installed. Fix: install the workflow skills into ~/.claude/skills",
     ]);
   });
 

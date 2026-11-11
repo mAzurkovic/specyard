@@ -16,34 +16,34 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
   - Start to UI ready under 3 s (NFR4).
   - Request without the token or from another Origin: 403 (NFR7). Server not reachable on a non-loopback address (NFR6).
   - A broken tasks.md shows an error badge with its line; the rest of the project still renders (FR20).
-  - Changing a source file flags the generated file and every file built from it; "Mark as not affected" clears the flag and changes only the sources line (FR46, FR51).
+  - (Removed in M2 F1: stale detection, FR46 to FR51.)
 - Needs: none.
 - Features:
   - F1. Start and serve: CLI, start checks, project picker and `--path`, server on 127.0.0.1 with token and Origin check, SSE, UI header shell. Docs: tasks. Needs: none. Status: done.
   - F2. Spec tree model: parsers with parse errors, model build (stages, dependencies, critical path, can-start-now), watcher pushes the model over SSE. Docs: tasks. Needs: F1. Status: done.
   - F3. Graph and list views: milestone lanes and SVG edges, task tree with state icons, header counts, Blueprint light style. Docs: tasks. Needs: F2. Status: done.
   - F4. Feature pages and context: spec tabs, required and missing file states, context list, Add context file. Docs: tasks. Needs: F2. Status: done.
-  - F5. Stale detection: hashes, stale flags passed down, stale page with git-history diff, Mark as not affected. Docs: tasks. Needs: F2, F3. Status: done.
-  - F6. Follow-ups: the open review findings and follow-ups of F1 to F5, and finding the project from a repo subfolder. Docs: tasks. Needs: F5. Status: in progress.
+  - F5. Stale detection: hashes, stale flags passed down, stale page with git-history diff, Mark as not affected. Docs: tasks. Needs: F2, F3. Status: done. Removed in M2 F1 (Lead decision 2026-11-11).
+  - F6. Follow-ups: the open review findings and follow-ups of F1 to F5, and finding the project from a repo subfolder. Docs: tasks. Needs: F5. Status: done.
 
 ## M2. Planning runs and inbox
-- Delivers: plan a project from the UI. Run `/to-brd`, `/to-design`, `/to-milestones`, `/to-tasks` and `/expert-review`, answer question batches and approvals in the inbox, review diffs, approve tasks, act on stale files. Ships the changed skills and `specyard skills install`.
-- Builds: `skills.ts` and bundled `skills/` (all skill changes), `runs/RunManager.ts` (planning runs: start, events, logs), `runs/events.ts`, `inbox.ts`, `notify.ts`, `hashes.ts` (blobs), `server.ts` (`POST /api/runs`, `GET /api/runs/:id`, `POST /api/inbox/:waitId`, `POST /api/features/:id/approve`), `model.ts` (run-derived stages: running, needs you), `ui/` (run view, inbox, diff, approve and re-run, stale actions).
-- Covers: FR12, FR13, FR23, FR24, FR25, FR26, FR36 (planning runs), FR37, FR38, FR40, FR41, FR42, FR43, FR44, FR45 (inbox count), FR50, FR58, FR59, FR60, FR61, FR62, FR63, FR64, FR65, FR66, FR67, NFR2.
+- Delivers: plan a project from the UI, with the skills as they are. Run `/to-brd`, `/to-design`, `/to-milestones`, `/to-tasks` and `/expert-review`, answer their questions and approvals in the inbox, review what a run changed, approve tasks. Stale detection and skill versions are removed to keep it simple (Lead decision, 2026-11-11).
+- Builds: removal of stale detection and version checks; `runs/RunManager.ts` (planning runs: start, events, logs), `runs/events.ts`, `inbox.ts` (text questions, tool approvals), `notify.ts`, `approve.ts`, `server.ts` (`POST /api/runs`, `GET /api/runs`, `GET /api/runs/:id`, `POST /api/inbox/:waitId`, `POST /api/features/:id/approve`), `model.ts` (run stages: running, needs you; approval check), `ui/` (run buttons, Run tab, diffs, inbox page, approve). In the skills repo: the batch-questions option in the 3 planning skills that ask questions.
+- Covers: FR4 (presence only), FR23, FR24, FR25, FR26, FR36 (planning runs), FR37, FR38, FR40, FR41, FR42, FR43, FR44, FR45 (inbox count), FR58, FR59, FR60, FR62, FR63, NFR2.
 - Exit criteria:
-  - `/to-tasks` on a feature runs from the UI, its question batch is answered in the inbox, and the new tasks.md shows as a diff with `Status: draft` and a sources line (FR24, FR42, FR65, FR66).
+  - `/to-tasks` on a feature runs from the UI with the unchanged skill, its questions are answered in the inbox (as a batch when asked), and the new tasks.md shows as a diff (FR24, FR42, FR62, FR63).
   - A run event shows in the UI within 1 s (NFR2).
   - A tool call that prompts in the CLI becomes an inbox approval; Approve and Skip both resume the run (FR37, FR43).
   - Submit stays disabled until every question in a batch has an answer; "Accept all" fills only unanswered ones (FR42).
   - Approving tasks writes `Status: approved <hash>`; editing a task afterwards sets the feature back to "tasks in review" (FR26).
-  - `specyard skills install` on an empty `~/.claude/skills` installs every workflow skill; a symlinked or locally changed skill is not overwritten (FR12, FR13).
   - Run logs land in `specs/<project>/.specyard/` and `git status` shows nothing new (FR60).
+  - No stale flags, stale page or version warnings remain in the app.
 - Needs: M1.
 - Features:
-  - F1. Skill changes and install: `version` frontmatter, batched questions, sources lines, `Status: draft`, `X<n>` fix tasks, progress line grammar, context reading, `specyard skills install`. Docs: tasks. Needs: none. Status: not started.
+  - F1. Simplify: remove stale detection and version checks from the app; in the skills repo, add the batch-questions option to the 3 planning skills that ask questions. Docs: tasks. Needs: none. Status: in progress.
   - F2. Run a planning skill: RunManager on the SDK, events from the stream and progress lines, run logs, before and after diff, Re-run with comment. Docs: tasks. Needs: F1. Status: not started.
-  - F3. Inbox: question batches and tool approvals through `canUseTool`, Submit and Accept all, OS notifications and tab title. Docs: tasks. Needs: F2. Status: not started.
-  - F4. Approve and stale actions: approval line and its invalidation, re-run downstream skills from the stale page. Docs: tasks. Needs: F2. Status: not started.
+  - F3. Inbox: the skills' text questions (batched when asked) and tool approvals, Submit and Accept all, OS notifications and tab title. Docs: tasks. Needs: F2. Status: not started.
+  - F4. Approve tasks: approval line and its invalidation when the tasks change. Docs: tasks. Needs: F2. Status: not started.
 
 ## M3. Implement loop
 - Delivers: build a feature from the UI through to merge. Implement in a worktree, watch the run live, stop, resume, survive the usage limit, merge from the evidence page.
@@ -59,7 +59,7 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
   - Evidence page lists open items first; Merge merges through `gh` after confirmation (FR53, FR54, FR56).
 - Needs: M2.
 - Features:
-  - F1. Implement in a worktree: Implement gates, worktree add, implement run, live run view, stale warning on a running run. Docs: tasks. Needs: none. Status: not started.
+  - F1. Implement in a worktree: Implement gates, worktree add, implement run, live run view. Docs: tasks. Needs: none. Status: not started.
   - F2. Stop, resume, quit, usage limit: stop by message then interrupt, Resume, Ctrl-C prompt, pause and auto-resume. Docs: tasks. Needs: F1. Status: not started.
   - F3. PRs and merge: `gh` polling, PR open and done stages, Merge, worktree removal, ready notifications. Docs: tasks. Needs: F1. Status: not started.
   - F4. Evidence page: open items first, done gate, coverage, verify, review, proof, PR. Docs: tasks. Needs: F1. Status: not started.
@@ -77,7 +77,7 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
 | FR37, FR38, FR40 to FR44 | M2 |
 | FR39 | M3 |
 | FR45 | M1, M2, M3 |
-| FR46 to FR49, FR51 | M1 |
+| FR46 to FR49, FR51 | M1, removed in M2 F1 |
 | FR50 | M2 |
 | FR52 to FR57 | M3 |
 | FR58 to FR67 | M2 |
@@ -88,7 +88,6 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
 | `checks.ts`, `parser/`, `watch.ts` | M1 (worktrees in M3) |
 | `skills.ts`, `runs/events.ts`, `inbox.ts`, `notify.ts` | M2 |
 | `model.ts`, `server.ts`, `ui/` | M1, M2, M3 |
-| `hashes.ts` | M1, M2 |
 | `git.ts` | M1, M3 |
 | `runs/RunManager.ts` | M2, M3 |
 | `prs.ts` | M3 |

@@ -3,7 +3,7 @@
   --accent: #3b5bdb; --accent-soft: #e7ecff;
   --ok: #2b8a3e; --ok-soft: #e6f4ea; --run: #1971c2; --run-soft: #e3f0fc;
   --ask: #c2410c; --ask-soft: #fff1e6; --bad: #c92a2a; --bad-soft: #fdecec;
-  --stale: #a16207; --stale-soft: #fef6dc; --idle: #868e96; --idle-soft: #f1f3f5;
+  --warn: #a16207; --warn-soft: #fef6dc; --idle: #868e96; --idle-soft: #f1f3f5;
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; --head: var(--sans);
   --page: #dfe2e6; --page-ink: #444; --top-bg: #1b1f24; --top-ink: #e9ecef;
@@ -38,7 +38,6 @@ body.index .card:hover { outline: 2px solid var(--accent); }
 .top .chip { padding: 3px 9px; border-radius: 99px; font-size: 12px; color: #e9ecef; background: #343a40; }
 .top .chip.run { background: #1c3d5e; color: #a5d8ff; }
 .top .chip.ask { background: #5c2a0d; color: #ffc9a3; }
-.top .chip.stale { background: #4a3a0a; color: #ffe08a; }
 
 .side { background: var(--panel); border-right: 1px solid var(--line); padding: 12px 0; overflow: auto; }
 .side h4 { margin: 12px 14px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
@@ -63,11 +62,11 @@ h2 { margin: 0 0 4px; font-size: 17px; }
 /* Status dots and badges */
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; background: var(--idle); }
 .dot.ok { background: var(--ok); } .dot.run { background: var(--run); } .dot.ask { background: var(--ask); }
-.dot.bad { background: var(--bad); } .dot.stale { background: var(--stale); }
+.dot.bad { background: var(--bad); }
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 99px; font-size: 11px; font-weight: 600; background: var(--idle-soft); color: var(--idle); white-space: nowrap; }
 .badge.ok { background: var(--ok-soft); color: var(--ok); } .badge.run { background: var(--run-soft); color: var(--run); }
 .badge.ask { background: var(--ask-soft); color: var(--ask); } .badge.bad { background: var(--bad-soft); color: var(--bad); }
-.badge.stale { background: var(--stale-soft); color: var(--stale); } .badge.accent { background: var(--accent-soft); color: var(--accent); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); } .badge.accent { background: var(--accent-soft); color: var(--accent); }
 
 /* Buttons */
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
@@ -109,7 +108,7 @@ tr.group td { background: var(--soft); font-weight: 600; }
 .node b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .node .meta { display: flex; gap: 6px; align-items: center; margin-top: 5px; font-size: 11px; color: var(--muted); }
 .node.ok { border-left-color: var(--ok); } .node.run { border-left-color: var(--run); } .node.ask { border-left-color: var(--ask); }
-.node.stale { border-left-color: var(--stale); } .node.sel { outline: 2px solid var(--accent); }
+.node.sel { outline: 2px solid var(--accent); }
 .node.crit { box-shadow: 0 0 0 3px #3b5bdb22; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
@@ -164,7 +163,7 @@ tr.group td { background: var(--soft); font-weight: 600; }
   --bg: #f4f7fb; --panel: #fbfdff; --ink: #0f2a4a; --muted: #5a7394; --line: #c9d7ea; --soft: #edf2f9;
   --accent: #1c5bb8; --accent-soft: #e1ebfa; --crit: #d6336c; --grid: #1c5bb82e; --node-border: #1c5bb8; --edge: #7c9cc8;
   --ok: #2b8a3e; --ok-soft: #2b8a3e17; --run: #1971c2; --run-soft: #1971c217; --ask: #d9480f; --ask-soft: #d9480f17;
-  --bad: #c92a2a; --bad-soft: #c92a2a17; --stale: #a86f00; --stale-soft: #e8a60022; --idle: #6c84a3; --idle-soft: #6c84a31c;
+  --bad: #c92a2a; --bad-soft: #c92a2a17; --warn: #a86f00; --warn-soft: #e8a60022; --idle: #6c84a3; --idle-soft: #6c84a31c;
 }
 .graph { background: var(--panel) linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 20px 20px, linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 20px 20px; height: auto; overflow: auto; }
 .graph .canvas { position: relative; }
@@ -188,11 +187,6 @@ body { background: var(--bg); }
 .md h3 { font-size: 13px; margin: 12px 0 4px; }
 .md pre { background: var(--soft); padding: 8px 10px; border-radius: 6px; overflow: auto; }
 .md li:has(> input[type="checkbox"]) { list-style: none; margin-left: -18px; }
-
-/* Stale specs */
-.stale-banner { background: var(--stale-soft); border-color: #e8a60066; }
-.side .stale-mark { color: var(--stale); }
-.top a.chip { text-decoration: none; }
 .node .meta { overflow: hidden; white-space: nowrap; }
 /* Task count in the top-right corner, so the badge line never has to make room for it. */
 .node > .count { position: absolute; top: 8px; right: 9px; font-size: 11px; color: var(--muted); }

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { hashText } from "../src/hashes.js";
 import { buildModel, type ProjectFiles } from "../src/model.js";
 
 const milestones = (body: string) => `# P — Milestones\n\n${body}`;
@@ -77,7 +76,7 @@ describe("buildModel graph", () => {
   });
 
   it("carries the context files, and none when not given", () => {
-    const context = [{ path: "context/hld.md", size: 120, mtime: 1_700_000_000_000, hash: "77e01b2c9d40" }];
+    const context = [{ path: "context/hld.md", size: 120, mtime: 1_700_000_000_000 }];
     expect(buildModel("p", new Map(), new Map(), context).contextFiles).toEqual(context);
     expect(buildModel("p", new Map()).contextFiles).toEqual([]);
   });
@@ -136,24 +135,6 @@ describe("buildModel activity", () => {
       new Map([["m1-c/f1-a/tasks.md", 1000], ["m1-c/f1-a/progress.md", 3000], ["milestones.md", 9000]]),
     );
     expect(model.features.map((f) => f.updatedAt)).toEqual([3000, undefined]);
-  });
-});
-
-describe("buildModel stale flags", () => {
-  it("lists stale files, flags the features they belong to, and counts them", () => {
-    const text = milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Needs: none. Status: not started.\n  - F2. B: x. Docs: tasks. Needs: none. Status: not started.\n");
-    const oldDesign = "# D old\n";
-    const model = buildModel(
-      "p",
-      files({
-        "design.md": "# D new\n",
-        "m1-c/f1-a/tasks.md": `# T\n\n<!-- sources: ../../design.md ${hashText(oldDesign)} -->\nStatus: draft\n`,
-        "m1-c/f2-b/tasks.md": `# T\n\n<!-- sources: ../../design.md ${hashText("# D new\n")} -->\nStatus: draft\n`,
-      }, text),
-    );
-    expect(model.stale.map((s) => s.file)).toEqual(["m1-c/f1-a/tasks.md"]);
-    expect(model.staleCount).toBe(1);
-    expect(model.features.map((f) => [f.id, f.stale])).toEqual([["M1·F1", true], ["M1·F2", false]]);
   });
 });
 

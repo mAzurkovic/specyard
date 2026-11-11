@@ -4,7 +4,7 @@ import { ago, latest } from "../format.js";
 import { Icon, ICON_LEGEND } from "../icons.js";
 import { Inline } from "../Inline.js";
 import { issuesByFeature } from "../issues.js";
-import { ErrorBadge, StaleBadge } from "../IssueViews.js";
+import { ErrorBadge } from "../IssueViews.js";
 import { StageBadge } from "../stage.js";
 import { fixTaskIcon, taskIcon } from "../taskState.js";
 
@@ -80,7 +80,7 @@ function featureRows(f: Feature, expanded: boolean, toggle: () => void, errors: 
         {tasks.length ? (expanded ? "▾" : "▸") : "·"} {f.feature} <Inline text={f.name} />
       </td>
       <td>
-        <StageBadge stage={f.stage} /> <StaleBadge stale={f.stale} /> {errors}
+        <StageBadge stage={f.stage} /> {errors}
       </td>
       <td class="muted">{f.needs.join(", ") || "none"}</td>
       <td>{counts([f])}</td>

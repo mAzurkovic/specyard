@@ -22,7 +22,7 @@ export function IssuesPanel({ issues }: { issues: Issue[] }) {
           {sortIssues(issues).map((i) => (
             <tr key={`${i.file}:${i.line}:${i.message}`}>
               <td>
-                <span class={`badge ${i.kind === "error" ? "bad" : "stale"}`}>{i.kind}</span>
+                <span class={`badge ${i.kind === "error" ? "bad" : "warn"}`}>{i.kind}</span>
               </td>
               <td>
                 <code>{issueLocation(i)}</code>
@@ -33,14 +33,5 @@ export function IssuesPanel({ issues }: { issues: Issue[] }) {
         </tbody>
       </table>
     </div>
-  );
-}
-
-export function StaleBadge({ stale }: { stale: boolean }) {
-  if (!stale) return null;
-  return (
-    <span class="badge stale" data-stale title="Made from a spec that changed since">
-      stale
-    </span>
   );
 }
