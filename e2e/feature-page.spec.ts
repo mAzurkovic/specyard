@@ -81,9 +81,10 @@ test("a tab for a file the feature lists but does not have says how to write it"
   await open(page, FULL, "#/f/M1·F2/design");
   await expect(page.locator("main .badge")).toHaveText("needs design");
   await expect(page.locator("main .steps .now")).toHaveText("● Design");
-  await expect(page.locator("main .tab-body")).toHaveText("Not written yet: run /to-design M1 F2");
+  await expect(page.locator("main .tab-body")).toContainText("Not written yet: run /to-design M1 F2");
+  await expect(page.locator("main .tab-body").getByRole("button", { name: "Run" })).toBeVisible();
   await page.getByRole("tab", { name: "Tasks" }).click();
-  await expect(page.locator("main .tab-body")).toHaveText("Not written yet: run /to-tasks M1 F2");
+  await expect(page.locator("main .tab-body")).toContainText("Not written yet: run /to-tasks M1 F2");
   await page.getByRole("tab", { name: "Requirements" }).click();
   await expect(page.locator("main .tab-body")).toHaveText("Not needed");
 });

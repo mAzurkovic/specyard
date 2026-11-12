@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildModel, type ProjectFiles } from "../src/model.js";
+import { applyRuns, buildModel, type ProjectFiles } from "../src/model.js";
+import type { RunState } from "../src/runs/RunManager.js";
 
 const milestones = (body: string) => `# P — Milestones\n\n${body}`;
 const approved = "# T\n\nStatus: approved a41f09c2e7b1\n\n## 1. A [serial]\n- [x] 1.1 One.\n- [ ] 1.2 Two.\n";
@@ -150,5 +151,26 @@ describe("follow-up fixes", () => {
     const model = buildModel("p", files({ "m1-c/f1-a/tasks.md": "## 1. A [whenever]\n" }, text));
     expect(model.issues.find((i) => i.file === "m1-c/f1-a/tasks.md")?.feature).toBe("M1·F1");
     expect(model.issues.find((i) => i.message.includes("no dependency list"))?.feature).toBe("M1·F2");
+  });
+});
+
+describe("applyRuns", () => {
+  const text = milestones("## M1. C\n- Features:\n  - F1. A: x. Docs: tasks. Needs: none. Status: not started.\n  - F2. B: x. Docs: tasks. Needs: none. Status: not started.\n  - F3. C: x. Docs: tasks. Needs: none. Status: not started.\n");
+  const run = (target: string, state: RunState) => ({ id: target, kind: "to-tasks" as const, target, state, sessionId: undefined, startedAt: 0 });
+
+  it("shows a feature with a running run as running, and one waiting for an answer as needs-you", () => {
+    const model = applyRuns(buildModel("p", files({}, text)), [run("M1·F1", "running"), run("M1·F2", "needs-you"), run("M1·F3", "done")]);
+    expect(model.features.map((f) => [f.id, f.stage])).toEqual([["M1·F1", "running"], ["M1·F2", "needs-you"], ["M1·F3", "needs-tasks"]]);
+  });
+
+  it("counts every running run, also on milestones, the project, and twice on one feature", () => {
+    const model = applyRuns(buildModel("p", files({}, text)), [run("M1·F1", "running"), run("M1·F1", "running"), run("M1", "running"), { ...run("x", "running"), target: undefined }, run("M1·F2", "needs-you")]);
+    expect(model.runningRuns).toBe(4);
+    expect(buildModel("p", files({}, text)).runningRuns).toBe(0);
+  });
+
+  it("drops a running feature from can-start-now", () => {
+    const model = applyRuns(buildModel("p", files({}, text)), [run("M1·F1", "running")]);
+    expect(model.canStartNow.map((c) => c.id)).toEqual(["M1·F2", "M1·F3"]);
   });
 });

@@ -52,7 +52,7 @@ In files (source of truth):
 In `specs/<project>/.specyard/` (holds `.gitignore` with `*`, FR60):
 - `settings.json`: `{ bypassPermissionsAllowed: false }` and UI choices.
 - `runs/<runId>/run.json`: `{ id, kind: 'implement'|'to-design'|'to-tasks'|'to-milestones'|'to-brd'|'expert-review', target: 'M2·F1', sessionId, worktree?, state: 'running'|'waiting'|'paused'|'stopped'|'done'|'failed', pausedUntil?, startedAt, endedAt? }`
-- `runs/<runId>/events.jsonl`: one `RunEvent` per line.
+- `runs/<runId>/events.jsonl`: one `RunEvent` per line. Runs are reopened from these files at start; a run that was still going when the process stopped shows as `failed`, because its session is gone (Resume comes in M3). A run whose SDK stream throws or ends with no result is `failed`. A run that cannot start is `failed`, and `POST /api/runs` answers 500. Several runs MAY go on one target at once; each one counts in the header, and each one's diff also shows the others' edits made while it ran.
 - `runs/<runId>/before/`: copies of the files the run may rewrite (FR24).
 
 In memory: `ProjectModel`, running `Query` handles, open waits (`Map<waitId, resolve>`).

@@ -9,6 +9,7 @@ import { GraphView } from "./views/GraphView.js";
 import { ListView } from "./views/ListView.js";
 import { MilestonePage } from "./views/MilestonePage.js";
 import { AddContextFile, ProjectPage } from "./views/ProjectPage.js";
+import { RunView } from "./views/RunView.js";
 
 type View = "graph" | "list";
 
@@ -43,7 +44,7 @@ function HeaderCounts({ model }: { model: ProjectModel }) {
   return (
     <>
       <span class="chip run" data-count="running">
-        {count("running")} running
+        {model.runningRuns} running
       </span>
       <span class="chip ask" data-count="needs-you">
         {count("needs-you")} need you
@@ -108,6 +109,8 @@ function Page({ model, path, route }: { model: ProjectModel; path: string; route
       return <MilestonePage model={model} id={route.id} />;
     case "project":
       return <ProjectPage model={model} path={path} />;
+    case "run":
+      return <RunView runId={route.id} />;
     case "graph":
     case "list":
       return <Overview model={model} view={route.page} />;

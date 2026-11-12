@@ -5,7 +5,8 @@ Scope: M2 F3. Questions and tool approvals from running skills go to one inbox; 
 ## 1. Runs wait for the inbox [serial]
 - [ ] 1.1 `src/runs/questions.ts` `parseQuestions(text)`: the `Q:` / `Recommend:` / `Why:` blocks of a skill's message, one or many (batched). Unit tests on real skill output.
 - [ ] 1.2 `src/inbox.ts`: open items, each `{ waitId, runId, feature, skill, kind: "questions" | "approval", ... }`. A run turn that ends with question blocks becomes one questions item; its answers go back as the next user message (`streamInput`), one line per question (FR42). Unit tests with a fake SDK.
-- [ ] 1.3 `RunManager` `canUseTool`: a tool call that would prompt in the CLI becomes an approval item; it resolves to allow or deny with the reply as message (FR37). Unit tests with a fake SDK.
+- [ ] 1.3 `RunManager` `canUseTool`: a tool call that would prompt in the CLI becomes an approval item; it resolves to allow or deny with the reply as message (FR37). An `AskUserQuestion` call becomes a questions item and resolves to `allow` with the answers in `updatedInput` (a real run showed the skills may call it before falling back to text). Unit tests with a fake SDK.
+- [ ] 1.5 A run that waits (needs you) can be finished from the inbox without a reply, which closes the run.
 - [ ] 1.4 No bypass mode unless the run was started with `bypassPermissions: true` (FR38). Unit test.
 
 ## 2. Answer from the API [serial, needs 1]

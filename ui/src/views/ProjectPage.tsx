@@ -1,4 +1,6 @@
 import { useRef, useState } from "preact/hooks";
+import type { RunKind } from "../../../src/runs/RunManager.js";
+import { RunButton } from "./RunView.js";
 import type { ProjectModel } from "../../../src/model.js";
 import { addContextFile } from "../api.js";
 import { nextStep } from "../nextStep.js";
@@ -110,6 +112,7 @@ function Command({ command }: { command: string }) {
       <button class="btn sm" aria-label={`Copy ${command}`} onClick={() => void copy()}>
         {copied === "yes" ? "Copied" : copied === "failed" ? "Copy failed: select the command" : "Copy"}
       </button>
+      <RunButton kind={command.slice(1) as RunKind} label="Run" />
     </span>
   );
 }
