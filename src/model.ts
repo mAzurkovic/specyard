@@ -3,7 +3,6 @@ import { parseMilestones, type FeatureEntry } from "./parser/milestones.js";
 import { parseProgress, type TaskProgress } from "./parser/progress.js";
 import type { Parsed } from "./parser/result.js";
 import { parseTasks, type ParentEntry } from "./parser/tasks.js";
-import { findStale, type StaleFile } from "./stale.js";
 
 /** File texts keyed by path relative to the project folder. */
 export type ProjectFiles = Map<string, string>;
@@ -44,14 +43,10 @@ export type Feature = {
   implementable: boolean;
   /** Newest modified time (ms) of the feature's files; undefined when it has none. */
   updatedAt: number | undefined;
-  /** A file of this feature was made from a source that changed since. */
-  stale: boolean;
-  /** Paths of this feature's stale files. */
-  staleFiles: string[];
 };
 
 /** A file under `context/` or `mocks/`, path relative to the project folder, mtime in ms. */
-export type ContextFile = { path: string; size: number; mtime: number; hash: string };
+export type ContextFile = { path: string; size: number; mtime: number };
 
 export type Milestone = { id: string; name: string; delivers: string; exitCriteria: string[]; needs: string[]; features: string[] };
 
@@ -64,8 +59,6 @@ export type ProjectModel = {
   criticalPath: string[];
   canStartNow: { id: string; action: string }[];
   issues: Issue[];
-  stale: StaleFile[];
-  staleCount: number;
   contextFiles: ContextFile[];
 };
 
@@ -127,12 +120,6 @@ export function buildModel(
       issue.file === "milestones.md" ? byLine.get(issue.line) : features.find((f) => f.dir !== undefined && issue.file.startsWith(`${f.dir}/`))?.id;
   }
 
-  const stale = findStale(files, contextFiles);
-  for (const f of features) {
-    f.staleFiles = f.dir === undefined ? [] : stale.filter((s) => s.file.startsWith(`${f.dir}/`)).map((s) => s.file);
-    f.stale = f.staleFiles.length > 0;
-  }
-
   return {
     name,
     files: { requirements: files.has("requirements.md"), design: files.has("design.md"), milestones: milestonesText !== undefined },
@@ -146,8 +133,6 @@ export function buildModel(
     }),
     issues,
     contextFiles,
-    stale,
-    staleCount: stale.length,
   };
 }
 
@@ -197,8 +182,6 @@ function readFeature(
     fixTasks: progress?.tasks.filter((t) => /^X\d+$/.test(t.id)) ?? [],
     implementable: !hasFile.tasks || (parentEntries !== undefined && header !== undefined),
     updatedAt: newest(dir === undefined ? [] : [...mtimes].filter(([path]) => path.startsWith(`${dir}/`)).map(([, time]) => time)),
-    stale: false,
-    staleFiles: [],
   };
 }
 

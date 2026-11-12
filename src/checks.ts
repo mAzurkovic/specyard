@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { expectedSkills } from "./expectedSkills.js";
+import { workflowSkills } from "./expectedSkills.js";
 
 const run = promisify(execFile);
 
@@ -38,40 +38,12 @@ export async function checkClaude(env: NodeJS.ProcessEnv = process.env): Promise
   }
 }
 
-const INSTALL = "specyard skills install";
+const INSTALL = "install the workflow skills into ~/.claude/skills";
 
+/** A skill counts as installed when its SKILL.md exists; skills carry no version to compare. */
 export function checkSkills(home: string): CheckResult[] {
-  return Object.entries(expectedSkills).map(([name, expected]) => {
-    let text: string;
-    try {
-      text = readFileSync(join(home, ".claude", "skills", name, "SKILL.md"), "utf8");
-    } catch {
-      return { name, status: "fail", detail: "not installed", fix: INSTALL };
-    }
-    const version = frontmatterVersion(text);
-    if (version === undefined) return { name, status: "warn", detail: `no version, expected ${expected} or newer`, fix: INSTALL };
-    if (compareVersions(version, expected) < 0) {
-      return { name, status: "warn", detail: `${version} is older than ${expected}`, fix: INSTALL };
-    }
-    return { name, status: "ok", detail: version };
+  return workflowSkills.map((name): CheckResult => {
+    const installed = existsSync(join(home, ".claude", "skills", name, "SKILL.md"));
+    return installed ? { name, status: "ok", detail: "installed" } : { name, status: "fail", detail: "not installed", fix: INSTALL };
   });
-}
-
-/** YAML allows the value quoted and the file in CRLF; both read as the bare version. */
-function frontmatterVersion(text: string): string | undefined {
-  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? "";
-  return /^version:\s*["']?([^"'\s]+)["']?\s*$/m.exec(frontmatter)?.[1];
-}
-
-/** Numeric compare of an installed version against an expected one; an unreadable part counts as older. */
-function compareVersions(installed: string, expected: string): number {
-  const pa = installed.split(".").map(Number);
-  const pb = expected.split(".").map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const x = pa[i] ?? 0;
-    const y = pb[i] ?? 0;
-    if (Number.isNaN(x)) return -1;
-    if (x !== y) return x - y;
-  }
-  return 0;
 }

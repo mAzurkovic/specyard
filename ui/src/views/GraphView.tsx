@@ -3,7 +3,7 @@ import type { Feature, ProjectModel } from "../../../src/model.js";
 import { layoutGraph } from "../graph/layout.js";
 import { Inline } from "../Inline.js";
 import { issuesByFeature } from "../issues.js";
-import { ErrorBadge, StaleBadge } from "../IssueViews.js";
+import { ErrorBadge } from "../IssueViews.js";
 import { STAGE, StageBadge } from "../stage.js";
 
 const NODE_TONE: Partial<Record<string, string>> = { ok: "ok", run: "run", ask: "ask", bad: "ask" };
@@ -67,7 +67,7 @@ export function GraphView({ model }: { model: ProjectModel }) {
                 tabIndex={0}
                 aria-pressed={selected === n.id}
                 data-feature={n.id}
-                class={`node ${f.stale ? "stale" : tone}${critical.has(n.id) ? " crit" : ""}${selected === n.id ? " sel" : ""}`}
+                class={`node ${tone}${critical.has(n.id) ? " crit" : ""}${selected === n.id ? " sel" : ""}`}
                 style={{ left: `${n.x}px`, top: `${n.y}px` }}
                 onClick={() => setSelected(n.id)}
                 onDblClick={() => (location.hash = `#/f/${encodeURIComponent(n.id)}`)}
@@ -85,7 +85,6 @@ export function GraphView({ model }: { model: ProjectModel }) {
                 </b>
                 <div class="meta">
                   <StageBadge stage={f.stage} />
-                  <StaleBadge stale={f.stale} />
                   <ErrorBadge issues={issues.get(f.id)} />
                 </div>
               </div>

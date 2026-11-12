@@ -1,7 +1,6 @@
 import { mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { hashText } from "../src/hashes.js";
 import { readContextFiles, readMtimes, readProject } from "../src/readProject.js";
 import { tempDir } from "./helpers.js";
 
@@ -67,7 +66,6 @@ it("lists every file under context/ and mocks/ with its size and change time, no
     ["mocks/01-start.html", 8],
   ]);
   expect(files.find((f) => f.path === "context/hld.md")?.mtime).toBe(changed.getTime());
-  expect(files.find((f) => f.path === "context/hld.md")?.hash).toBe(hashText("# HLD\n"));
 });
 
 it("lists no context files when context/ and mocks/ do not exist", async () => {
@@ -89,19 +87,4 @@ it("treats a context folder it cannot read as empty and still lists the other", 
   writeFileSync(join(dir, "context", "hld.md"), "# HLD\n");
   writeFileSync(join(dir, "mocks"), "a plain file named mocks");
   expect((await readContextFiles(dir)).map((f) => f.path)).toEqual(["context/hld.md"]);
-});
-
-it("reuses a context file's hash while its size and mtime are unchanged", async () => {
-  const dir = tempDir("cache");
-  mkdirSync(join(dir, "context"), { recursive: true });
-  const file = join(dir, "context", "hld.md");
-  writeFileSync(file, "# HLD v1\n");
-  const when = new Date("2026-11-01T10:00:00Z");
-  utimesSync(file, when, when);
-  const first = (await readContextFiles(dir))[0]!.hash;
-  writeFileSync(file, "# HLD v2\n");
-  utimesSync(file, when, when);
-  expect((await readContextFiles(dir))[0]!.hash).toBe(first);
-  utimesSync(file, new Date("2026-11-02T10:00:00Z"), new Date("2026-11-02T10:00:00Z"));
-  expect((await readContextFiles(dir))[0]!.hash).toBe(hashText("# HLD v2\n"));
 });

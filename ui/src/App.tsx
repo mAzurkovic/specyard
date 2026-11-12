@@ -3,13 +3,12 @@ import { selectProject, useProjectState, type ProjectRef } from "./api.js";
 import { IconSymbols } from "./icons.js";
 import { Inline } from "./Inline.js";
 import { IssuesPanel } from "./IssueViews.js";
-import { featureHref, milestoneHref, staleHref, useRoute, type Route } from "./route.js";
+import { featureHref, milestoneHref, useRoute, type Route } from "./route.js";
 import { FeaturePage } from "./views/FeaturePage.js";
 import { GraphView } from "./views/GraphView.js";
 import { ListView } from "./views/ListView.js";
 import { MilestonePage } from "./views/MilestonePage.js";
 import { AddContextFile, ProjectPage } from "./views/ProjectPage.js";
-import { StalePage } from "./views/StalePage.js";
 
 type View = "graph" | "list";
 
@@ -49,9 +48,6 @@ function HeaderCounts({ model }: { model: ProjectModel }) {
       <span class="chip ask" data-count="needs-you">
         {count("needs-you")} need you
       </span>
-      <a class="chip stale" data-count="stale" href={model.stale[0] ? staleHref(model.stale[0].file) : undefined}>
-        {model.staleCount} stale
-      </a>
     </>
   );
 }
@@ -112,8 +108,6 @@ function Page({ model, path, route }: { model: ProjectModel; path: string; route
       return <MilestonePage model={model} id={route.id} />;
     case "project":
       return <ProjectPage model={model} path={path} />;
-    case "stale":
-      return <StalePage model={model} file={route.file} />;
     case "graph":
     case "list":
       return <Overview model={model} view={route.page} />;
@@ -159,17 +153,13 @@ function Sidebar({ model, route }: { model: ProjectModel; route: Route }) {
   return (
     <nav class="side">
       <h4>Project</h4>
-      {projectFiles.map(([name, found]) => {
-        const stale = model.stale.some((st) => st.file === name);
-        return (
-          <a key={name} href={stale ? staleHref(name) : "#/project"} class={found ? undefined : "muted"}>
-            <span class={stale ? "dot stale" : found ? "dot ok" : "dot"} />
-            {name}
-            {!found && <span class="count">missing</span>}
-            {stale && <span class="count stale-mark">stale</span>}
-          </a>
-        );
-      })}
+      {projectFiles.map(([name, found]) => (
+        <a key={name} href="#/project" class={found ? undefined : "muted"}>
+          <span class={found ? "dot ok" : "dot"} />
+          {name}
+          {!found && <span class="count">missing</span>}
+        </a>
+      ))}
       <h4>Context</h4>
       {context.map((f) => (
         <div class="item" key={f.path}>
@@ -203,7 +193,7 @@ function Sidebar({ model, route }: { model: ProjectModel; route: Route }) {
             </h4>
             {features.map((f) => (
               <a key={f.id} href={featureHref(f.id)} class={route.page === "feature" && route.id === f.id ? "sub on" : "sub"}>
-                <span class={f.stale ? "dot stale" : f.stage === "done" ? "dot ok" : "dot"} />
+                <span class={f.stage === "done" ? "dot ok" : "dot"} />
                 {f.feature} <Inline text={f.name} />
               </a>
             ))}
