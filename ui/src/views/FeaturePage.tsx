@@ -1,9 +1,11 @@
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import type { Feature, ProjectModel } from "../../../src/model.js";
-import { fetchFile } from "../api.js";
+import { fetchFile, listRuns, useRunUpdates } from "../api.js";
 import { Markdown } from "../markdown.js";
 import { featureHref, milestoneHref } from "../route.js";
 import { StageBadge } from "../stage.js";
+import type { RunInfo, RunKind } from "../../../src/runs/RunManager.js";
+import { RunButton, RunView } from "./RunView.js";
 import { featureSteps, Steps } from "./Steps.js";
 
 const SPEC_TABS = ["requirements", "design", "tasks"] as const;
@@ -36,6 +38,8 @@ export function FeaturePage({ model, id, tab }: { model: ProjectModel; id: strin
       <div class="row">
         <h2>{`${feature.feature} ${feature.name}`}</h2>
         <StageBadge stage={feature.stage} />
+        <span class="spacer" />
+        <RunButton kind="expert-review" target={feature.id} />
       </div>
       <Steps steps={featureSteps(feature)} />
       <div class="tabs" role="tablist">
@@ -46,7 +50,13 @@ export function FeaturePage({ model, id, tab }: { model: ProjectModel; id: strin
         ))}
       </div>
       <div class="tab-body" role="tabpanel">
-        {isSpecTab(current) ? <SpecTabBody feature={feature} tab={current} version={model} /> : <p class="muted">No runs yet</p>}
+        {isSpecTab(current) ? (
+          <SpecTabBody feature={feature} tab={current} version={model} />
+        ) : current === "run" ? (
+          <FeatureRuns featureId={feature.id} />
+        ) : (
+          <p class="muted">No runs yet</p>
+        )}
       </div>
     </>
   );
@@ -56,8 +66,9 @@ function SpecTabBody({ feature, tab, version }: { feature: Feature; tab: SpecTab
   if (feature.dir && feature.hasFile[tab]) return <SpecFile path={`${feature.dir}/${tab}.md`} version={version} />;
   if (!feature.docs.includes(tab)) return <p class="muted">Not needed</p>;
   return (
-    <p class="muted">
+    <p class="muted row">
       Not written yet: run <code>{`${WRITER[tab]} ${feature.milestone} ${feature.feature}`}</code>
+      <RunButton kind={WRITER[tab].slice(1) as RunKind} target={feature.id} label="Run" />
     </p>
   );
 }
@@ -80,4 +91,32 @@ function SpecFile({ path, version }: { path: string; version: unknown }) {
   if (loaded?.path !== path) return <p class="muted">Loading…</p>;
   if ("error" in loaded) return <p class="error">Cannot read {loaded.error}</p>;
   return <Markdown text={loaded.text} />;
+}
+
+/** The feature's newest run in full, and links to the older ones; a new run shows as soon as it starts. */
+function FeatureRuns({ featureId }: { featureId: string }) {
+  const [runs, setRuns] = useState<RunInfo[] | null>(null);
+  const refresh = useCallback(() => void listRuns(featureId).then(setRuns), [featureId]);
+  useEffect(refresh, [refresh]);
+  useRunUpdates(useCallback(({ run }) => run.target === featureId && refresh(), [featureId, refresh]));
+  if (runs === null) return <p class="muted">Loading…</p>;
+  const [newest, ...older] = runs;
+  if (!newest) return <p class="muted">No runs yet</p>;
+  return (
+    <>
+      <RunView runId={newest.id} />
+      {older.length > 0 && (
+        <div class="panel">
+          <h3>Earlier runs</h3>
+          {older.map((r) => (
+            <div key={r.id}>
+              <a href={`#/run/${r.id}`}>
+                /{r.kind} · {new Date(r.startedAt).toLocaleString()} · {r.state}
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }

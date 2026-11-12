@@ -2,6 +2,7 @@ import type { ProjectModel } from "../../../src/model.js";
 import { Markdown } from "../markdown.js";
 import { featureHref } from "../route.js";
 import { StageBadge } from "../stage.js";
+import { RunButton } from "./RunView.js";
 
 export function MilestonePage({ model, id }: { model: ProjectModel; id: string }) {
   const milestone = model.milestones.find((m) => m.id === id);
@@ -19,7 +20,13 @@ export function MilestonePage({ model, id }: { model: ProjectModel; id: string }
       <div class="crumb">
         {model.name} › {milestone.id}
       </div>
-      <h2>{`${milestone.id} ${milestone.name}`}</h2>
+      <div class="row">
+        <h2>{`${milestone.id} ${milestone.name}`}</h2>
+        <span class="spacer" />
+        <RunButton kind="to-design" target={milestone.id} />
+        <RunButton kind="to-tasks" target={milestone.id} />
+        <RunButton kind="expert-review" target={milestone.id} />
+      </div>
       <div class="sub-h">Needs: {milestone.needs.join(", ") || "none"}</div>
       <div class="panel md">
         <h4>Delivers</h4>

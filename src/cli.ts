@@ -37,6 +37,7 @@ async function start(pathArg: string | undefined): Promise<void> {
     projects: choice.projects,
     current: choice.kind === "selected" ? choice.project : null,
     uiDir: fileURLToPath(new URL("../ui/dist", import.meta.url)),
+    repoRoot: root,
   });
   // Registered before the URL is printed, so a Ctrl-C right after it still exits cleanly.
   process.once("SIGINT", () => void server.close().then(() => process.exit(0)));

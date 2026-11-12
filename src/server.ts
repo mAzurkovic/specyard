@@ -1,18 +1,20 @@
 import { randomBytes } from "node:crypto";
 import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { basename, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 import type { AddressInfo } from "node:net";
 import { authorize } from "./auth.js";
 import { readInside } from "./inside.js";
-import { buildModel, type ProjectModel } from "./model.js";
+import { applyRuns, buildModel, type ProjectModel } from "./model.js";
 import type { Project } from "./projects.js";
 import { readContextFiles, readMtimes, readProject } from "./readProject.js";
+import { RUN_KINDS, RunManager, type QueryFn, type RunKind } from "./runs/RunManager.js";
 import { watchProject } from "./watch.js";
 
 export type RunningServer = { url: string; address: string; token: string; close: () => Promise<void> };
 
-type Options = { port: number; projects: Project[]; current: Project | null; uiDir: string };
+/** `repoRoot` is where skill runs start; `runQuery` stands in for the SDK in tests. */
+type Options = { port: number; projects: Project[]; current: Project | null; uiDir: string; repoRoot?: string; runQuery?: QueryFn };
 
 const HOST = "127.0.0.1";
 const PORT_TRIES = 20;
@@ -39,7 +41,30 @@ export async function startServer(options: Options): Promise<RunningServer> {
   let stopWatching = () => {};
   const listeners = new Set<ServerResponse>();
   const view = (p: Project) => ({ name: p.name, path: p.dir });
-  const projectBody = () => JSON.stringify({ projects: options.projects.map(view), current: current && view(current), model });
+  const runManagers = new Map<string, RunManager>();
+  const runsFor = (project: Project): RunManager => {
+    const known = runManagers.get(project.dir);
+    if (known) return known;
+    const repoRoot = options.repoRoot ?? dirname(dirname(project.dir));
+    const manager = new RunManager({
+      repoRoot,
+      projectDir: project.dir,
+      // Paths as a user would type them from the repo root.
+      contextFiles: () => (current === project ? (model?.contextFiles ?? []) : []).map((f) => relative(repoRoot, join(project.dir, f.path))),
+      readSpecs: () => readProject(project.dir),
+      runQuery: options.runQuery,
+    });
+    manager.subscribe((runId, event) => {
+      const data = JSON.stringify({ runId, run: manager.get(runId), event });
+      listeners.forEach((res) => res.write(`event: run\ndata: ${data}\n\n`));
+      // A turn's end usually means files were written: read them now rather than wait for the watcher.
+      if (event.kind === "end") void (current === project ? rebuild(project) : Promise.resolve()).then(broadcast);
+    });
+    runManagers.set(project.dir, manager);
+    return manager;
+  };
+  const shownModel = () => (model && current ? applyRuns(model, runsFor(current).list()) : model);
+  const projectBody = () => JSON.stringify({ projects: options.projects.map(view), current: current && view(current), model: shownModel() });
   const broadcast = () => listeners.forEach((res) => res.write(`event: project\ndata: ${projectBody()}\n\n`));
 
   const rebuild = async (project: Project) => {
@@ -112,6 +137,34 @@ export async function startServer(options: Options): Promise<RunningServer> {
         res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
         res.end(file);
       });
+    }
+    if (url.pathname === "/api/runs") {
+      if (!current || !model) return void send(res, 404);
+      const [project, snapshot] = [current, model];
+      if (req.method === "GET") return void send(res, 200, JSON.stringify(runsFor(project).list(url.searchParams.get("target") ?? undefined)));
+      if (req.method !== "POST") return void send(res, 405);
+      return void readJson(req).then(async (body) => {
+        const { kind, target, comment } = (body ?? {}) as { kind?: unknown; target?: unknown; comment?: unknown };
+        const targets = new Set([...snapshot.features.map((f) => f.id), ...snapshot.milestones.map((m) => m.id)]);
+        const validTarget = target === undefined || (typeof target === "string" && targets.has(target));
+        if (!RUN_KINDS.includes(kind as RunKind) || !validTarget || (comment !== undefined && typeof comment !== "string")) return send(res, 400);
+        const run = await runsFor(project).start({ kind: kind as RunKind, target: target as string | undefined, comment: comment as string | undefined });
+        send(res, 201, JSON.stringify({ runId: run.id }));
+        broadcast();
+      }).catch((error: unknown) => {
+        console.error(`Could not start the run: ${(error as Error).message}`);
+        if (!res.headersSent) send(res, 500);
+      });
+    }
+    const runMatch = /^\/api\/runs\/([\w-]+)$/.exec(url.pathname);
+    if (runMatch && req.method === "GET") {
+      if (!current) return void send(res, 404);
+      const manager = runsFor(current);
+      const run = manager.get(runMatch[1]!);
+      if (!run) return void send(res, 404);
+      return void Promise.all([manager.events(run.id), manager.changes(run.id)]).then(([events, changes]) =>
+        send(res, 200, JSON.stringify({ run, events, changes })),
+      );
     }
     if (url.pathname === "/api/context") {
       if (req.method !== "POST") return void send(res, 405);

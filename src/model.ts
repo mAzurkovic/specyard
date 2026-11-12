@@ -3,6 +3,7 @@ import { parseMilestones, type FeatureEntry } from "./parser/milestones.js";
 import { parseProgress, type TaskProgress } from "./parser/progress.js";
 import type { Parsed } from "./parser/result.js";
 import { parseTasks, type ParentEntry } from "./parser/tasks.js";
+import type { RunInfo } from "./runs/RunManager.js";
 
 /** File texts keyed by path relative to the project folder. */
 export type ProjectFiles = Map<string, string>;
@@ -60,6 +61,8 @@ export type ProjectModel = {
   canStartNow: { id: string; action: string }[];
   issues: Issue[];
   contextFiles: ContextFile[];
+  /** Skill runs going now, on any target. */
+  runningRuns: number;
 };
 
 const FEATURE_FILE = /^m(\d+)-[^/]+\/f(\d+)-[^/]+\/(requirements|design|tasks|progress)\.md$/;
@@ -132,6 +135,7 @@ export function buildModel(
       return action ? [{ id: f.id, action }] : [];
     }),
     issues,
+    runningRuns: 0,
     contextFiles,
   };
 }
@@ -240,4 +244,20 @@ function criticalPath(features: Feature[], edges: ProjectModel["edges"], issues:
     if (path.length > best.length) best = path;
   }
   return best;
+}
+
+/** A feature with an active run shows that run's state; nothing new starts on it meanwhile. */
+export function applyRuns(model: ProjectModel, runs: Pick<RunInfo, "target" | "state">[]): ProjectModel {
+  const active = new Map<string, Stage>();
+  for (const run of runs) {
+    if (run.target !== undefined && (run.state === "running" || run.state === "needs-you")) active.set(run.target, run.state);
+  }
+  const runningRuns = runs.filter((r) => r.state === "running").length;
+  if (active.size === 0) return { ...model, runningRuns };
+  return {
+    ...model,
+    runningRuns,
+    features: model.features.map((f) => (active.has(f.id) ? { ...f, stage: active.get(f.id)! } : f)),
+    canStartNow: model.canStartNow.filter((c) => !active.has(c.id)),
+  };
 }
