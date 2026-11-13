@@ -7,7 +7,8 @@ export type Route =
   | { page: "project" }
   | { page: "feature"; id: string; tab: string | undefined }
   | { page: "milestone"; id: string }
-  | { page: "run"; id: string };
+  | { page: "run"; id: string }
+  | { page: "inbox"; id: string | undefined };
 
 export const featureHref = (id: string, tab?: string) => `#/f/${encodeURIComponent(id)}${tab ? `/${tab}` : ""}`;
 export const milestoneHref = (id: string) => `#/m/${encodeURIComponent(id)}`;
@@ -24,6 +25,7 @@ export function parseRoute(hash: string): Route {
   if (page === "f" && id) return { page: "feature", id, tab };
   if (page === "m" && id) return { page: "milestone", id };
   if (page === "run" && id) return { page: "run", id };
+  if (page === "inbox") return { page: "inbox", id };
   return { page: "home" };
 }
 

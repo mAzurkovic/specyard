@@ -1,10 +1,11 @@
 import { useEffect, useState } from "preact/hooks";
+import type { InboxAnswer, InboxItem } from "../../src/inbox.js";
 import type { ProjectModel } from "../../src/model.js";
 import type { RunEvent } from "../../src/runs/events.js";
 import type { RunInfo, RunKind } from "../../src/runs/RunManager.js";
 
 export type ProjectRef = { name: string; path: string };
-export type ProjectState = { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null };
+export type ProjectState = { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null; inbox: InboxItem[] };
 
 const token = new URLSearchParams(location.search).get("t") ?? "";
 const auth = { "X-Specyard-Token": token };
@@ -46,6 +47,11 @@ export async function listRuns(target: string): Promise<RunInfo[]> {
   return (await fetch(`/api/runs?target=${encodeURIComponent(target)}`, { headers: auth })).json() as Promise<RunInfo[]>;
 }
 
+/** Answers an inbox item; the response status says why when it is not taken. */
+export function answerInbox(waitId: string, answer: InboxAnswer): Promise<Response> {
+  return fetch(`/api/inbox/${encodeURIComponent(waitId)}`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify(answer) });
+}
+
 export async function getRun(id: string): Promise<RunDetails | null> {
   const res = await fetch(`/api/runs/${encodeURIComponent(id)}`, { headers: auth });
   return res.ok ? ((await res.json()) as RunDetails) : null;
@@ -60,8 +66,13 @@ export function useProjectState(): ProjectState | null {
   const [state, setState] = useState<ProjectState | null>(null);
   useEffect(() => {
     const onProject = (e: Event) => setState(JSON.parse((e as MessageEvent<string>).data) as ProjectState);
+    const onInbox = (e: Event) => setState((s) => s && { ...s, inbox: JSON.parse((e as MessageEvent<string>).data) as InboxItem[] });
     serverEvents().addEventListener("project", onProject);
-    return () => serverEvents().removeEventListener("project", onProject);
+    serverEvents().addEventListener("inbox", onInbox);
+    return () => {
+      serverEvents().removeEventListener("project", onProject);
+      serverEvents().removeEventListener("inbox", onInbox);
+    };
   }, []);
   return state;
 }

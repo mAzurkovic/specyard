@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { parseCliArgs } from "./args.js";
 import { checkClaude, checkSkills } from "./checks.js";
+import { notify } from "./notify.js";
 import { findRepoRoot, projectCheck, resolveProject } from "./projects.js";
 import { formatChecks } from "./report.js";
 import { startServer } from "./server.js";
@@ -38,6 +39,7 @@ async function start(pathArg: string | undefined): Promise<void> {
     current: choice.kind === "selected" ? choice.project : null,
     uiDir: fileURLToPath(new URL("../ui/dist", import.meta.url)),
     repoRoot: root,
+    notify: (title, message) => void notify(title, message),
   });
   // Registered before the URL is printed, so a Ctrl-C right after it still exits cleanly.
   process.once("SIGINT", () => void server.close().then(() => process.exit(0)));

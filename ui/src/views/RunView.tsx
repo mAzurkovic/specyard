@@ -72,6 +72,11 @@ export function RunView({ runId }: { runId: string }) {
           </pre>
         </div>
       )}
+      {run.state === "needs-you" && (
+        <p>
+          <a href="#/inbox">Answer in the inbox</a>
+        </p>
+      )}
       {changes.map((c) => (
         <div class="panel" key={c.path} data-change={c.path}>
           <h3>
@@ -127,5 +132,9 @@ function describe(e: RunEvent): string {
       return e.resetsAt === undefined ? "Usage limit reached" : `Usage limit reached, resets ${new Date(e.resetsAt).toLocaleTimeString()}`;
     case "end":
       return e.ok ? "— turn ended" : "— turn ended with an error";
+    case "question":
+    case "approval":
+    case "answer":
+      return e.text;
   }
 }
