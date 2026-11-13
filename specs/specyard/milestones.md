@@ -40,9 +40,9 @@ Build order: M1, then M2, then M3. Each milestone is usable on its own: M1 shows
   - No stale flags, stale page or version warnings remain in the app.
 - Needs: M1.
 - Features:
-  - F1. Simplify: remove stale detection and version checks from the app; in the skills repo, add the batch-questions option to the 3 planning skills that ask questions. Docs: tasks. Needs: none. Status: in progress.
-  - F2. Run a planning skill: RunManager on the SDK, events from the stream and progress lines, run logs, before and after diff, Re-run with comment. Docs: tasks. Needs: F1. Status: not started.
-  - F3. Inbox: the skills' text questions (batched when asked) and tool approvals, Submit and Accept all, OS notifications and tab title. Docs: tasks. Needs: F2. Status: not started.
+  - F1. Simplify: remove stale detection and version checks from the app; in the skills repo, add the batch-questions option to the 3 planning skills that ask questions. Docs: tasks. Needs: none. Status: done.
+  - F2. Run a planning skill: RunManager on the SDK, events from the stream and progress lines, run logs, before and after diff, Re-run with comment. Docs: tasks. Needs: F1. Status: done.
+  - F3. Inbox: the skills' text questions (batched when asked) and tool approvals, Submit and Accept all, OS notifications and tab title. Docs: tasks. Needs: F2. Status: in progress.
   - F4. Approve tasks: approval line and its invalidation when the tasks change. Docs: tasks. Needs: F2. Status: not started.
 
 ## M3. Implement loop

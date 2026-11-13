@@ -7,6 +7,9 @@ export type RunEvent = { t: number } & (
   | { kind: "subagent-stop"; id: string; status: string; summary: string }
   | { kind: "rate-limit"; resetsAt: number | undefined }
   | { kind: "end"; ok: boolean }
+  | { kind: "question"; text: string }
+  | { kind: "approval"; text: string }
+  | { kind: "answer"; text: string }
 );
 
 /** The progress lines the workflow skills print, such as `[build 2.1] attempt 1: PASS`. */

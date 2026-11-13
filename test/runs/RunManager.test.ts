@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { RunEvent } from "../../src/runs/events.js";
+import type { CanUseTool, PermissionResult } from "@anthropic-ai/claude-agent-sdk";
 import { RunManager, type QueryFn } from "../../src/runs/RunManager.js";
 import { tempDir } from "../helpers.js";
 
@@ -65,15 +66,15 @@ describe("RunManager.start", () => {
     expect(manager.get(run.id)).toMatchObject({ state: "done", sessionId: "sess-1", kind: "to-tasks", target: "M2·F1" });
   });
 
-  it("waits with needs-you when the turn ends on a question, and continues on a reply", async () => {
+  it("waits with needs-you when the turn ends on a question, and continues with the inbox answer", async () => {
     const question = "Q: Store keys hashed?\nRecommend: Yes, SHA-256.\nWhy: a leak shows hashes, not keys.";
     const { manager, fake } = setup([[say(question), end], [say("Writing tasks.md."), end]]);
     const run = await manager.start({ kind: "to-design", target: "M2·F3" });
     await settle();
     expect(manager.get(run.id)?.state).toBe("needs-you");
-    manager.reply(run.id, "Yes");
+    manager.inbox.answer(manager.inbox.list()[0]!.waitId, { answers: { "Store keys hashed?": "Yes, SHA-256." } });
     await settle();
-    expect(fake.seen.messages[1]).toBe("Yes");
+    expect(fake.seen.messages[1]).toBe("Store keys hashed? Yes, SHA-256.");
     expect(manager.get(run.id)?.state).toBe("done");
   });
 
@@ -146,14 +147,6 @@ describe("RunManager.start", () => {
     expect(manager.list()[0]?.state).toBe("failed");
   });
 
-  it("refuses a reply to a run that is not waiting for one", async () => {
-    const { manager } = setup([[say("Done."), end]]);
-    const run = await manager.start({ kind: "to-tasks", target: "M1·F1" });
-    await settle();
-    expect(manager.reply(run.id, "Yes")).toBe(false);
-    expect(manager.reply("no-such-run", "Yes")).toBe(false);
-  });
-
   it("keeps the run log in a gitignored folder of the project", async () => {
     const { manager, projectDir } = setup([[say("[read] x"), end]]);
     const run = await manager.start({ kind: "to-tasks", target: "M1·F1" });
@@ -223,5 +216,188 @@ describe("RunManager.start", () => {
     await manager.start({ kind: "to-tasks", target: "M1·F2" });
     await settle();
     expect(manager.list("M1·F1").map((r) => r.id)).toEqual([b.id, a.id]);
+  });
+});
+
+/** A stand-in for the SDK that asks permission for one tool call, then reports what it was told. */
+function askingQuery(toolName: string, input: Record<string, unknown>, title?: string) {
+  const results: PermissionResult[] = [];
+  const messages: string[] = [];
+  let signal: AbortSignal | undefined;
+  const run: QueryFn = ({ prompt, options }) =>
+    (async function* () {
+      for await (const user of prompt as AsyncIterable<SDKUserMessage>) {
+        messages.push(String(user.message.content));
+        if (results.length > 0) break;
+        const controller = new AbortController();
+        signal = controller.signal;
+        const result = (await (options.canUseTool as CanUseTool)(toolName, input, { signal, title, toolUseID: "tool-1" } as Parameters<CanUseTool>[2]))!;
+        results.push(result);
+        yield say(`tool: ${result.behavior}`);
+        yield end;
+      }
+    })();
+  return { run, results, messages, signal: () => signal };
+}
+
+function withQuery(runQuery: QueryFn) {
+  const repo = tempDir("runs");
+  return new RunManager({ repoRoot: repo, projectDir: join(repo, "specs", "p"), contextFiles: () => [], readSpecs: async () => new Map(), runQuery });
+}
+
+describe("runs and the inbox", () => {
+  it("puts a batch of text questions in the inbox as one item naming the feature and skill", async () => {
+    const batch = "Two questions.\n\nQ: Auth?\nRecommend: API key.\nWhy: internal callers.\n\nQ: Rotation?\nRecommend: Two keys.";
+    const { manager, fake } = setup([[say(batch), end], [end]]);
+    const run = await manager.start({ kind: "to-design", target: "M2·F3" });
+    await settle();
+    expect(manager.inbox.list()).toEqual([
+      expect.objectContaining({ runId: run.id, feature: "M2·F3", skill: "to-design", kind: "questions", questions: [
+        { question: "Auth?", recommend: "API key.", why: "internal callers." },
+        { question: "Rotation?", recommend: "Two keys." },
+      ] }),
+    ]);
+    manager.inbox.answer(manager.inbox.list()[0]!.waitId, { answers: { "Auth?": "API key.", "Rotation?": "One key, replaced at once." } });
+    await settle();
+    expect(fake.seen.messages[1]).toBe("Auth? API key.\nRotation? One key, replaced at once.");
+    expect(manager.inbox.list()).toEqual([]);
+  });
+
+  it("finishes a waiting run from the inbox without sending a reply", async () => {
+    const { manager, fake } = setup([[say("Q: Auth?\nRecommend: API key."), end]]);
+    const run = await manager.start({ kind: "to-design", target: "M2·F3" });
+    await settle();
+    manager.inbox.answer(manager.inbox.list()[0]!.waitId, { decision: "finish" });
+    await settle();
+    expect(manager.get(run.id)?.state).toBe("done");
+    expect(fake.seen.messages).toHaveLength(1);
+    expect((await manager.events(run.id)).map((e) => e.kind)).toEqual(["text", "end", "question", "answer"]);
+  });
+
+  it.each([
+    ["approve", { decision: "approve" as const }, { behavior: "allow", updatedInput: { command: "npm test" } }],
+    ["skip", { decision: "skip" as const }, { behavior: "deny", message: "The user skipped this tool call." }],
+    ["a reply", { reply: "Run only the unit tests." }, { behavior: "deny", message: "Run only the unit tests." }],
+  ])("turns a tool call that needs permission into an approval item, and %s answers it", async (_label, answer, expected) => {
+    const sdk = askingQuery("Bash", { command: "npm test" }, "Claude wants to run npm test");
+    const manager = withQuery(sdk.run);
+    const run = await manager.start({ kind: "to-tasks", target: "M1·F1" });
+    await settle();
+    expect(manager.get(run.id)?.state).toBe("needs-you");
+    expect(manager.inbox.list()).toEqual([expect.objectContaining({ runId: run.id, kind: "approval", tool: "Bash", title: "Claude wants to run npm test", skill: "to-tasks" })]);
+    manager.inbox.answer(manager.inbox.list()[0]!.waitId, answer);
+    await settle();
+    expect(sdk.results).toEqual([expected]);
+    expect(manager.get(run.id)?.state).toBe("done");
+  });
+
+  it("names the tool when the SDK gives no prompt title", async () => {
+    const manager = withQuery(askingQuery("Write", { file_path: "a.md" }).run);
+    await manager.start({ kind: "to-tasks", target: "M1·F1" });
+    await settle();
+    expect(manager.inbox.list()[0]).toMatchObject({ kind: "approval", title: "Claude wants to use Write" });
+  });
+
+  it("asks the question tool's questions in the inbox and passes the answers back in the tool input", async () => {
+    const input = {
+      questions: [
+        { question: "Which store?", header: "Store", multiSelect: false, options: [{ label: "SQLite", description: "one file" }, { label: "Postgres (Recommended)", description: "already in use" }] },
+        { question: "Batch size?", header: "Size", multiSelect: false, options: [{ label: "100", description: "" }, { label: "1000", description: "" }] },
+      ],
+    };
+    const sdk = askingQuery("AskUserQuestion", input);
+    const manager = withQuery(sdk.run);
+    await manager.start({ kind: "to-design", target: "M1·F1" });
+    await settle();
+    expect(manager.inbox.list()[0]).toMatchObject({ kind: "questions", questions: [
+      { question: "Which store?", options: ["SQLite", "Postgres (Recommended)"], recommend: "Postgres (Recommended)", why: "already in use" },
+      { question: "Batch size?", options: ["100", "1000"] },
+    ] });
+    const answers = { "Which store?": "Postgres (Recommended)", "Batch size?": "500" };
+    manager.inbox.answer(manager.inbox.list()[0]!.waitId, { answers });
+    await settle();
+    expect(sdk.results).toEqual([{ behavior: "allow", updatedInput: { ...input, answers } }]);
+  });
+
+  it("finishing a run that waits on a tool call stops the call and ends the run", async () => {
+    const sdk = askingQuery("Bash", { command: "rm -rf build" });
+    const manager = withQuery(sdk.run);
+    const run = await manager.start({ kind: "to-tasks", target: "M1·F1" });
+    await settle();
+    manager.inbox.answer(manager.inbox.list()[0]!.waitId, { decision: "finish" });
+    await settle();
+    expect(sdk.results).toEqual([{ behavior: "deny", message: "The user ended the run.", interrupt: true }]);
+    expect(manager.get(run.id)?.state).toBe("done");
+  });
+
+  it("keeps the run waiting while a second tool call still needs an answer, and logs each approval", async () => {
+    const results: string[] = [];
+    const twoCalls: QueryFn = ({ options }) =>
+      (async function* () {
+        const ask = (command: string) =>
+          (options.canUseTool as CanUseTool)("Bash", { command }, { signal: new AbortController().signal, title: `Claude wants to run ${command}`, toolUseID: command } as Parameters<CanUseTool>[2]);
+        const both = await Promise.all([ask("npm test"), ask("npm run lint")]);
+        results.push(...both.map((r) => r!.behavior));
+        yield end;
+      })();
+    const manager = withQuery(twoCalls);
+    const run = await manager.start({ kind: "to-tasks", target: "M1·F1" });
+    await settle();
+    const [first, second] = manager.inbox.list();
+    manager.inbox.answer(first!.waitId, { decision: "approve" });
+    await settle();
+    expect(manager.get(run.id)?.state).toBe("needs-you");
+    manager.inbox.answer(second!.waitId, { decision: "skip" });
+    await settle();
+    expect(results).toEqual(["allow", "deny"]);
+    expect(manager.get(run.id)?.state).toBe("done");
+    expect((await manager.events(run.id)).map((e) => e.kind)).toEqual(["approval", "approval", "answer", "answer", "end"]);
+  });
+
+  it("takes a run's open items away when the run ends", async () => {
+    let fail = () => {};
+    const stalled: QueryFn = ({ options }) =>
+      (async function* () {
+        void (options.canUseTool as CanUseTool)("Bash", {}, { signal: new AbortController().signal, toolUseID: "t" } as Parameters<CanUseTool>[2]);
+        await new Promise<void>((r) => (fail = r));
+        throw new Error("Claude Code process exited with code 1");
+      })();
+    const manager = withQuery(stalled);
+    await manager.start({ kind: "to-tasks", target: "M1·F1" });
+    await settle();
+    expect(manager.inbox.list()).toHaveLength(1);
+    fail();
+    await settle();
+    expect(manager.inbox.list()).toEqual([]);
+  });
+
+  it("takes an approval item away when the SDK cancels the tool call", async () => {
+    let cancel = () => {};
+    const cancelling: QueryFn = ({ options, prompt }) =>
+      (async function* () {
+        for await (const _ of prompt) {
+          const controller = new AbortController();
+          cancel = () => controller.abort();
+          void (options.canUseTool as CanUseTool)("Bash", {}, { signal: controller.signal, toolUseID: "t" } as Parameters<CanUseTool>[2]);
+          yield say("waiting");
+        }
+      })();
+    const manager = withQuery(cancelling);
+    await manager.start({ kind: "to-tasks", target: "M1·F1" });
+    await settle();
+    expect(manager.inbox.list()).toHaveLength(1);
+    cancel();
+    expect(manager.inbox.list()).toEqual([]);
+  });
+
+  it("leaves permissions to the user's settings, and bypasses them only for a run started with the toggle", async () => {
+    const plain = fakeQuery([[end]]);
+    await withQuery(plain.run).start({ kind: "to-tasks", target: "M1·F1" });
+    expect(plain.seen.options?.permissionMode).toBeUndefined();
+    expect(plain.seen.options?.allowDangerouslySkipPermissions).toBeUndefined();
+    expect(plain.seen.options?.canUseTool).toBeTypeOf("function");
+    const bypass = fakeQuery([[end]]);
+    await withQuery(bypass.run).start({ kind: "to-tasks", target: "M1·F1", bypassPermissions: true });
+    expect(bypass.seen.options).toMatchObject({ permissionMode: "bypassPermissions", allowDangerouslySkipPermissions: true });
   });
 });

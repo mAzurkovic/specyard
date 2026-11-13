@@ -8,13 +8,22 @@ import { readInside } from "./inside.js";
 import { applyRuns, buildModel, type ProjectModel } from "./model.js";
 import type { Project } from "./projects.js";
 import { readContextFiles, readMtimes, readProject } from "./readProject.js";
+import type { InboxAnswer } from "./inbox.js";
 import { RUN_KINDS, RunManager, type QueryFn, type RunKind } from "./runs/RunManager.js";
 import { watchProject } from "./watch.js";
 
 export type RunningServer = { url: string; address: string; token: string; close: () => Promise<void> };
 
-/** `repoRoot` is where skill runs start; `runQuery` stands in for the SDK in tests. */
-type Options = { port: number; projects: Project[]; current: Project | null; uiDir: string; repoRoot?: string; runQuery?: QueryFn };
+/** `repoRoot` is where skill runs start; `runQuery` stands in for the SDK in tests; `notify` tells the user about new inbox items. */
+type Options = {
+  port: number;
+  projects: Project[];
+  current: Project | null;
+  uiDir: string;
+  repoRoot?: string;
+  runQuery?: QueryFn;
+  notify?: (title: string, message: string) => void;
+};
 
 const HOST = "127.0.0.1";
 const PORT_TRIES = 20;
@@ -59,12 +68,27 @@ export async function startServer(options: Options): Promise<RunningServer> {
       listeners.forEach((res) => res.write(`event: run\ndata: ${data}\n\n`));
       // A turn's end usually means files were written: read them now rather than wait for the watcher.
       if (event.kind === "end") void (current === project ? rebuild(project) : Promise.resolve()).then(broadcast);
+      // Waiting and answering change the feature's stage.
+      else if (event.kind === "question" || event.kind === "approval" || event.kind === "answer") broadcast();
+    });
+    const notified = new Set<string>();
+    manager.inbox.subscribe(() => {
+      for (const item of manager.inbox.list().filter((i) => !notified.has(i.waitId))) {
+        notified.add(item.waitId);
+        const what = item.kind === "approval" ? item.title : `${item.questions.length} question${item.questions.length === 1 ? "" : "s"}`;
+        options.notify?.("specyard", `${item.feature ?? project.name} /${item.skill}: ${what}`);
+      }
+      if (current !== project) return;
+      const data = JSON.stringify(manager.inbox.list());
+      listeners.forEach((res) => res.write(`event: inbox\ndata: ${data}\n\n`));
+      broadcast();
     });
     runManagers.set(project.dir, manager);
     return manager;
   };
   const shownModel = () => (model && current ? applyRuns(model, runsFor(current).list()) : model);
-  const projectBody = () => JSON.stringify({ projects: options.projects.map(view), current: current && view(current), model: shownModel() });
+  const projectBody = () =>
+    JSON.stringify({ projects: options.projects.map(view), current: current && view(current), model: shownModel(), inbox: current ? runsFor(current).inbox.list() : [] });
   const broadcast = () => listeners.forEach((res) => res.write(`event: project\ndata: ${projectBody()}\n\n`));
 
   const rebuild = async (project: Project) => {
@@ -144,11 +168,17 @@ export async function startServer(options: Options): Promise<RunningServer> {
       if (req.method === "GET") return void send(res, 200, JSON.stringify(runsFor(project).list(url.searchParams.get("target") ?? undefined)));
       if (req.method !== "POST") return void send(res, 405);
       return void readJson(req).then(async (body) => {
-        const { kind, target, comment } = (body ?? {}) as { kind?: unknown; target?: unknown; comment?: unknown };
+        const { kind, target, comment, bypassPermissions } = (body ?? {}) as { kind?: unknown; target?: unknown; comment?: unknown; bypassPermissions?: unknown };
         const targets = new Set([...snapshot.features.map((f) => f.id), ...snapshot.milestones.map((m) => m.id)]);
         const validTarget = target === undefined || (typeof target === "string" && targets.has(target));
-        if (!RUN_KINDS.includes(kind as RunKind) || !validTarget || (comment !== undefined && typeof comment !== "string")) return send(res, 400);
-        const run = await runsFor(project).start({ kind: kind as RunKind, target: target as string | undefined, comment: comment as string | undefined });
+        const validBypass = bypassPermissions === undefined || typeof bypassPermissions === "boolean";
+        if (!RUN_KINDS.includes(kind as RunKind) || !validTarget || (comment !== undefined && typeof comment !== "string") || !validBypass) return send(res, 400);
+        const run = await runsFor(project).start({
+          kind: kind as RunKind,
+          target: target as string | undefined,
+          comment: comment as string | undefined,
+          bypassPermissions: bypassPermissions as boolean | undefined,
+        });
         send(res, 201, JSON.stringify({ runId: run.id }));
         broadcast();
       }).catch((error: unknown) => {
@@ -165,6 +195,18 @@ export async function startServer(options: Options): Promise<RunningServer> {
       return void Promise.all([manager.events(run.id), manager.changes(run.id)]).then(([events, changes]) =>
         send(res, 200, JSON.stringify({ run, events, changes })),
       );
+    }
+    const inboxMatch = /^\/api\/inbox\/([\w-]+)$/.exec(url.pathname);
+    if (inboxMatch) {
+      if (req.method !== "POST") return void send(res, 405);
+      if (!current) return void send(res, 404);
+      const inbox = runsFor(current).inbox;
+      return void readJson(req).then((body) => {
+        const answer = toInboxAnswer(body);
+        if (!answer) return send(res, 400);
+        const result = inbox.answer(inboxMatch[1]!, answer);
+        send(res, result === "done" ? 204 : result === "not-found" ? 404 : 409);
+      });
     }
     if (url.pathname === "/api/context") {
       if (req.method !== "POST") return void send(res, 405);
@@ -219,6 +261,16 @@ async function listen(server: Server, first: number): Promise<{ port: number; ad
 function send(res: ServerResponse, status: number, json?: string): void {
   res.writeHead(status, json === undefined ? {} : { "Content-Type": "application/json" });
   res.end(json);
+}
+
+/** The answer in a request body, or undefined when it does not have that shape. */
+function toInboxAnswer(body: unknown): InboxAnswer | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const { answers, decision, reply } = body as Record<string, unknown>;
+  const validAnswers = answers === undefined || (typeof answers === "object" && answers !== null && !Array.isArray(answers) && Object.values(answers).every((a) => typeof a === "string"));
+  const validDecision = decision === undefined || decision === "approve" || decision === "skip" || decision === "finish";
+  if (!validAnswers || !validDecision || (reply !== undefined && typeof reply !== "string")) return undefined;
+  return body as InboxAnswer;
 }
 
 /** Resolves to undefined when the body is missing, aborted, too large or not JSON. Never rejects. */

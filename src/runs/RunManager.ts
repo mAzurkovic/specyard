@@ -1,9 +1,11 @@
-import { query, type Options, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+import { query, type CanUseTool, type Options, type PermissionResult, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import { randomBytes } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
+import { Inbox, type InboxAnswer, type WaitFor } from "../inbox.js";
 import { toRunEvents, type RunEvent } from "./events.js";
+import { parseQuestions, type Question } from "./questions.js";
 
 /** The SDK's `query`, narrowed to what a run uses; tests pass a stand-in. */
 export type QueryFn = (params: { prompt: AsyncIterable<SDKUserMessage>; options: Options }) => AsyncIterable<SDKMessage>;
@@ -18,12 +20,11 @@ type Specs = Map<string, string>;
 type Run = { info: RunInfo; input: MessageQueue; lastText: string; after?: Promise<Specs | undefined> };
 type Listener = (runId: string, event: RunEvent) => void;
 
-/** A skill that stops on its question template (`Q:` then `Recommend:`) is waiting for the user. */
-const ASKS = /^Q: .+\n\s*Recommend: /m;
-
 export class RunManager {
   private readonly runs = new Map<string, Run>();
   private readonly listeners = new Set<Listener>();
+  /** What this project's runs wait on. */
+  readonly inbox = new Inbox();
 
   constructor(
     private readonly options: {
@@ -54,7 +55,8 @@ export class RunManager {
       .sort((a, b) => b.startedAt - a.startedAt || b.id.localeCompare(a.id));
   }
 
-  async start(request: { kind: RunKind; target?: string; comment?: string }): Promise<RunInfo> {
+  /** `bypassPermissions` skips the user's permission prompts for this one run. */
+  async start(request: { kind: RunKind; target?: string; comment?: string; bypassPermissions?: boolean }): Promise<RunInfo> {
     const id = `${Date.now().toString(36)}-${randomBytes(3).toString("hex")}`;
     const info: RunInfo = { id, kind: request.kind, target: request.target, state: "running", sessionId: undefined, startedAt: Date.now() };
     const run: Run = { info, input: new MessageQueue(), lastText: "" };
@@ -67,7 +69,12 @@ export class RunManager {
       const runQuery = this.options.runQuery ?? (query as QueryFn);
       const messages = runQuery({
         prompt: run.input,
-        options: { cwd: this.options.repoRoot, settingSources: ["user", "project", "local"] },
+        options: {
+          cwd: this.options.repoRoot,
+          settingSources: ["user", "project", "local"],
+          canUseTool: this.canUseTool(run),
+          ...(request.bypassPermissions ? { permissionMode: "bypassPermissions", allowDangerouslySkipPermissions: true } : {}),
+        },
       });
       void this.follow(run, messages);
     } catch (error) {
@@ -91,16 +98,6 @@ export class RunManager {
       .sort()
       .map((path) => ({ path, before: before.get(path) ?? null, after: after.get(path) ?? null }))
       .filter((c) => c.before !== c.after);
-  }
-
-  /** Sends the user's answer as the next message of a run that waits for one. */
-  reply(id: string, text: string): boolean {
-    const run = this.runs.get(id);
-    if (!run || run.info.state !== "needs-you") return false;
-    run.info.state = "running";
-    this.save(run);
-    run.input.push(text);
-    return true;
   }
 
   /** What a user would type: the skill's command, then the context files and the batching request, then any comment. */
@@ -127,15 +124,57 @@ export class RunManager {
     if (event.kind === "text") run.lastText = event.text;
     appendFileSync(join(this.runDir(run.info.id), "events.jsonl"), `${JSON.stringify(event)}\n`);
     // Settle the state first, so subscribers see it together with the event that ended the turn.
+    const questions = event.kind === "end" && event.ok ? parseQuestions(run.lastText) : [];
     if (event.kind === "end") {
       if (!event.ok) this.finish(run, "failed");
-      else if (ASKS.test(run.lastText)) {
-        run.info.state = "needs-you";
-        this.save(run);
-      } else this.finish(run, "done");
+      else if (questions.length > 0) this.setState(run, "needs-you");
+      else this.finish(run, "done");
       run.lastText = "";
     }
     for (const listener of this.listeners) listener(run.info.id, event);
+    if (questions.length > 0) void this.askInInbox(run, questions);
+  }
+
+  /** The skill's text questions: the answers go back as its next message, one line per question. */
+  private async askInInbox(run: Run, questions: Question[]): Promise<void> {
+    const { decision, answers = {} } = await this.wait(run, { kind: "questions", questions });
+    if (decision === "finish") this.finish(run, "done");
+    else run.input.push(questions.map((q) => `${q.question} ${answers[q.question]!.trim()}`).join("\n"));
+  }
+
+  /** A tool call that would prompt in the CLI waits for the user's answer in the inbox. */
+  private canUseTool(run: Run): CanUseTool {
+    return async (toolName, input, { signal, title }) => {
+      const asking = toolName === "AskUserQuestion";
+      const wait: WaitFor = asking
+        ? { kind: "questions", questions: toolQuestions(input) }
+        : { kind: "approval", tool: toolName, title: title ?? `Claude wants to use ${toolName}` };
+      const answer = await this.wait(run, wait, signal);
+      if (answer.decision === "finish") {
+        this.finish(run, "done");
+        return { behavior: "deny", message: "The user ended the run.", interrupt: true };
+      }
+      if (asking) return { behavior: "allow", updatedInput: { ...input, answers: answer.answers } };
+      if (answer.decision === "approve") return { behavior: "allow", updatedInput: input };
+      return { behavior: "deny", message: answer.reply?.trim() || "The user skipped this tool call." } satisfies PermissionResult;
+    };
+  }
+
+  private async wait(run: Run, wait: WaitFor, signal?: AbortSignal): Promise<InboxAnswer> {
+    this.setState(run, "needs-you");
+    const summary = wait.kind === "questions" ? `${wait.questions.length} question${wait.questions.length === 1 ? "" : "s"}` : wait.title;
+    this.record(run, { t: Date.now(), kind: wait.kind === "questions" ? "question" : "approval", text: `Waiting for you: ${summary}` });
+    const answer = await this.inbox.open({ runId: run.info.id, feature: run.info.target, skill: run.info.kind, ...wait }, signal);
+    // Several tool calls can wait at once; the run works again only when none is left.
+    if (answer.decision !== "finish" && !this.inbox.list().some((i) => i.runId === run.info.id)) this.setState(run, "running");
+    this.record(run, { t: Date.now(), kind: "answer", text: describeAnswer(answer) });
+    return answer;
+  }
+
+  private setState(run: Run, state: "running" | "needs-you"): void {
+    if (run.info.endedAt !== undefined) return;
+    run.info.state = state;
+    this.save(run);
   }
 
   private finish(run: Run, state: "done" | "failed"): void {
@@ -144,6 +183,7 @@ export class RunManager {
     run.info.endedAt = Date.now();
     this.save(run);
     run.input.close();
+    this.inbox.drop(run.info.id);
     run.after = this.copySpecs(run.info.id, "after").catch((error: unknown) => {
       console.error(`Could not keep what run ${run.info.id} changed: ${(error as Error).message}`);
       return undefined;
@@ -210,6 +250,22 @@ export class RunManager {
     writeFileSync(join(root, ".gitignore"), "*\n");
     writeFileSync(join(this.runDir(run.info.id), "run.json"), JSON.stringify(run.info, null, 2));
   }
+}
+
+/** The question tool's questions; an option labelled "(Recommended)" is the recommendation. */
+function toolQuestions(input: Record<string, unknown>): Question[] {
+  const asked = (input.questions ?? []) as { question: string; options: { label: string; description: string }[] }[];
+  return asked.map(({ question, options }) => {
+    const recommended = options.find((o) => /\(recommended\)\s*$/i.test(o.label));
+    return { question, options: options.map((o) => o.label), ...(recommended && { recommend: recommended.label, why: recommended.description }) };
+  });
+}
+
+function describeAnswer({ decision, reply }: InboxAnswer): string {
+  if (decision === "finish") return "You finished the run";
+  if (decision === "approve") return "You approved";
+  if (decision === "skip") return "You skipped";
+  return reply?.trim() ? `You replied: ${reply.trim()}` : "You answered";
 }
 
 /** An async stream of user messages that stays open until the run ends. */

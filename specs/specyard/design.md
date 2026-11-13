@@ -50,7 +50,7 @@ In files (source of truth):
 - Feature stage inputs: milestones.md feature line (`Docs`, `Needs`, `Status`), feature files, progress.md, run state, PR state.
 
 In `specs/<project>/.specyard/` (holds `.gitignore` with `*`, FR60):
-- `settings.json`: `{ bypassPermissionsAllowed: false }` and UI choices.
+- `settings.json`: UI choices.
 - `runs/<runId>/run.json`: `{ id, kind: 'implement'|'to-design'|'to-tasks'|'to-milestones'|'to-brd'|'expert-review', target: 'M2·F1', sessionId, worktree?, state: 'running'|'waiting'|'paused'|'stopped'|'done'|'failed', pausedUntil?, startedAt, endedAt? }`
 - `runs/<runId>/events.jsonl`: one `RunEvent` per line. Runs are reopened from these files at start; a run that was still going when the process stopped shows as `failed`, because its session is gone (Resume comes in M3). A run whose SDK stream throws or ends with no result is `failed`. A run that cannot start is `failed`, and `POST /api/runs` answers 500. Several runs MAY go on one target at once; each one counts in the header, and each one's diff also shows the others' edits made while it ran.
 - `runs/<runId>/before/`: copies of the files the run may rewrite (FR24).
@@ -67,9 +67,9 @@ HTTP API on 127.0.0.1. Every `/api/*` request needs `?t=<token>` or the `X-Specy
 - `GET /api/events` (SSE) → `project` (full model), `run` (RunEvent with runId), `inbox` (full list).
 - `GET /api/file?path=` → file text, for the spec tabs.
 - `GET /api/runs/:id` → run.json + events.
-- `POST /api/runs` `{ kind, target, comment?, bypassPermissions? }` → `{ runId }`. 409 when Implement gates fail (FR27), with reasons.
+- `POST /api/runs` `{ kind, target, comment?, bypassPermissions? }` → `{ runId }`. `bypassPermissions: true` skips the permission prompts for that one run; no settings gate it, and the UI toggle comes with Implement (M3). 409 when Implement gates fail (FR27), with reasons.
 - `POST /api/runs/:id/stop` → 202. `POST /api/runs/:id/resume` → `{ runId }`.
-- `POST /api/inbox/:waitId` `{ answers?: Record<question, string>, decision?: 'approve'|'skip', reply?: string }` → 204. 409 when a batch is not fully answered (FR42).
+- `POST /api/inbox/:waitId` `{ answers?: Record<question, string>, decision?: 'approve'|'skip'|'finish', reply?: string }` → 204. 409 when a batch is not fully answered (FR42); 404 for an unknown item; 400 for a malformed body. A reply with no decision denies the tool call with the reply as its message, so Claude reads it and goes on. `finish` ends the waiting run without an answer.
 - `POST /api/features/:id/approve` → writes the Status line.
 - `POST /api/context` (multipart) → copies into `context/`.
 - `POST /api/prs/:n/merge` → `gh pr merge`.

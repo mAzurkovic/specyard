@@ -1,4 +1,6 @@
-import type { ProjectModel, Stage } from "../../src/model.js";
+import { useEffect } from "preact/hooks";
+import type { InboxItem } from "../../src/inbox.js";
+import type { ProjectModel } from "../../src/model.js";
 import { selectProject, useProjectState, type ProjectRef } from "./api.js";
 import { IconSymbols } from "./icons.js";
 import { Inline } from "./Inline.js";
@@ -6,6 +8,7 @@ import { IssuesPanel } from "./IssueViews.js";
 import { featureHref, milestoneHref, useRoute, type Route } from "./route.js";
 import { FeaturePage } from "./views/FeaturePage.js";
 import { GraphView } from "./views/GraphView.js";
+import { InboxPage } from "./views/InboxPage.js";
 import { ListView } from "./views/ListView.js";
 import { MilestonePage } from "./views/MilestonePage.js";
 import { AddContextFile, ProjectPage } from "./views/ProjectPage.js";
@@ -18,6 +21,10 @@ export function App() {
   const route = useRoute();
   const current = state?.current ?? null;
   const model = state?.model ?? null;
+  const inbox = state?.inbox ?? [];
+  useEffect(() => {
+    document.title = inbox.length > 0 ? `(${inbox.length}) specyard` : "specyard";
+  }, [inbox.length]);
   return (
     <div class="app">
       <IconSymbols />
@@ -31,24 +38,23 @@ export function App() {
           </span>
         )}
         <span class="spacer" />
-        {model && <HeaderCounts model={model} />}
+        {model && <HeaderCounts model={model} inbox={inbox} />}
       </header>
-      {model ? <Sidebar model={model} route={route} /> : <nav class="side" />}
-      <main>{state && <Body projects={state.projects} current={current} model={model} route={route} />}</main>
+      {model ? <Sidebar model={model} route={route} inbox={inbox} /> : <nav class="side" />}
+      <main>{state && <Body projects={state.projects} current={current} model={model} route={route} inbox={inbox} />}</main>
     </div>
   );
 }
 
-function HeaderCounts({ model }: { model: ProjectModel }) {
-  const count = (stage: Stage) => model.features.filter((f) => f.stage === stage).length;
+function HeaderCounts({ model, inbox }: { model: ProjectModel; inbox: InboxItem[] }) {
   return (
     <>
       <span class="chip run" data-count="running">
         {model.runningRuns} running
       </span>
-      <span class="chip ask" data-count="needs-you">
-        {count("needs-you")} need you
-      </span>
+      <a class="chip ask" data-count="needs-you" href="#/inbox">
+        {inbox.length} need you
+      </a>
     </>
   );
 }
@@ -64,7 +70,7 @@ function summary(model: ProjectModel, view: View): string {
   return parts.join(" · ");
 }
 
-function Body({ projects, current, model, route }: { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null; route: Route }) {
+function Body({ projects, current, model, route, inbox }: { projects: ProjectRef[]; current: ProjectRef | null; model: ProjectModel | null; route: Route; inbox: InboxItem[] }) {
   if (current) {
     if (!model) {
       return (
@@ -74,7 +80,7 @@ function Body({ projects, current, model, route }: { projects: ProjectRef[]; cur
         </>
       );
     }
-    return <Page model={model} path={current.path} route={route} />;
+    return <Page model={model} path={current.path} route={route} inbox={inbox} />;
   }
   if (projects.length === 0) {
     return (
@@ -101,8 +107,10 @@ function Body({ projects, current, model, route }: { projects: ProjectRef[]; cur
   );
 }
 
-function Page({ model, path, route }: { model: ProjectModel; path: string; route: Route }) {
+function Page({ model, path, route, inbox }: { model: ProjectModel; path: string; route: Route; inbox: InboxItem[] }) {
   switch (route.page) {
+    case "inbox":
+      return <InboxPage model={model} items={inbox} selected={route.id} />;
     case "feature":
       return <FeaturePage model={model} id={route.id} tab={route.tab} />;
     case "milestone":
@@ -144,7 +152,7 @@ function Overview({ model, view }: { model: ProjectModel; view: View }) {
   );
 }
 
-function Sidebar({ model, route }: { model: ProjectModel; route: Route }) {
+function Sidebar({ model, route, inbox }: { model: ProjectModel; route: Route; inbox: InboxItem[] }) {
   const context = model.contextFiles.filter((f) => f.path.startsWith("context/"));
   const mocks = model.contextFiles.length - context.length;
   const projectFiles = [
@@ -183,6 +191,9 @@ function Sidebar({ model, route }: { model: ProjectModel; route: Route }) {
       </a>
       <a class={onView("list") ? "on" : ""} href="#/list">
         List
+      </a>
+      <a class={route.page === "inbox" ? "on" : ""} href="#/inbox">
+        Inbox<span class="count">{inbox.length}</span>
       </a>
       {model.milestones.map((m) => {
         const features = model.features.filter((f) => f.milestone === m.id);
